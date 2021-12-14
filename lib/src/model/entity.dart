@@ -16,4 +16,8 @@ abstract class Entity<T> {
   /// Values must be in the same order as [fields]
   /// Do NOT return the identity
   ValueList get values;
+
+  /// Used to initialise the [id] of an entity
+  /// that has yet to be persisted.
+  static const notSet = -1;
 }

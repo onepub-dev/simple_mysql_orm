@@ -6,7 +6,7 @@ class Row {
 
   int fieldAsInt(String name) => fields[name] as int;
 
-  bool fieldAsBool(String name) => fields[name] as bool;
+  bool fieldAsBool(String name) => (fields[name] as int) == 1;
   DateTime fieldAsDateTime(String name) => fields[name] as DateTime;
   DateTime fieldAsDate(String name) => fields[name] as DateTime;
 }

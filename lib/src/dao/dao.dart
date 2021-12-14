@@ -1,5 +1,5 @@
 import 'package:galileo_mysql/galileo_mysql.dart' hide MySqlConnection;
-
+import 'package:intl/intl.dart';
 import 'db.dart';
 import '../model/entity.dart';
 import '../builder/builder.dart';
@@ -79,12 +79,12 @@ abstract class Dao<E> {
 
   Future<int> persist(Entity<E> entity) async {
     final fields = entity.fields;
-    final values = entity.values;
+    final values = convertToDb(entity.values);
 
     final placeHolders = '${'?, ' * (fields.length - 1)}?';
 
     final sql = 'insert into $_tablename '
-        '(${fields.join(",")}) values ($placeHolders)';
+        '(`${fields.join("`,`")}`) values ($placeHolders)';
 
     final result = await db.query(sql, values);
 
@@ -95,9 +95,9 @@ abstract class Dao<E> {
     final fields = entity.fields;
     final values = entity.values;
 
-    final sql = 'update into $_tablename '
-        'set (${fields.join("=? ")}) '
-        'where id =?';
+    final sql = 'update $_tablename '
+        'set `${fields.join("`=?, `")}`=? '
+        'where id=?';
 
     await db.query(sql, [...values, entity.id]);
   }
@@ -115,6 +115,24 @@ abstract class Dao<E> {
   }
 
   String getTablename() => _tablename;
+
+  /// converts each value to a format suitable to
+  /// write to mysql.
+  List<String> convertToDb(ValueList values) {
+    List<String> convertedValues = <String>[];
+    for (final value in values) {
+      if (value.runtimeType == DateTime) {
+        convertedValues
+            .add(DateFormat('yyyy-MM-dd hh:mm:ss').format(value as DateTime));
+      } else if (value.runtimeType == bool) {
+        final v = value as bool;
+        convertedValues.add(v ? '1' : '0');
+      } else {
+        convertedValues.add(value.toString());
+      }
+    }
+    return convertedValues;
+  }
 }
 
 class TooManyResultsException implements Exception {

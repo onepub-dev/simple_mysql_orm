@@ -25,11 +25,37 @@ class Where<E> {
   Where(this._builder);
   final Builder<E> _builder;
 
+  WhereExpression<E> eq(String field, String match) {
+    final exp = EqualsExpression<E>(_builder, field, match);
+    _builder._whereExpressions.add(exp);
+    return exp;
+  }
+
+  WhereExpression<E> eqInt(String field, int match) {
+    final exp = EqualsExpression<E>(_builder, field, '$match');
+    _builder._whereExpressions.add(exp);
+    return exp;
+  }
+
   WhereExpression<E> like(String field, String match) {
     final exp = LikeExpression<E>(_builder, field, match);
     _builder._whereExpressions.add(exp);
     return exp;
   }
+}
+
+class EqualsExpression<E> extends WhereExpression<E> {
+  EqualsExpression(Builder<E> builder, this._field, this._match)
+      : super(builder);
+
+  final String _field;
+  final String _match;
+
+  @override
+  List<Object> get _values => [_match];
+
+  @override
+  String toString() => '$_field = ?';
 }
 
 class LikeExpression<E> extends WhereExpression<E> {
@@ -66,7 +92,7 @@ class Query<E> {
   Query(this.builder);
   Builder<E> builder;
 
-  Future<List<E>> query() async {
+  Future<List<E>> run() async {
     if (builder._select != null) {
       return builder._select!._query();
     } else if (builder._delete != null) {

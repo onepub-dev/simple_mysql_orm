@@ -15,5 +15,6 @@ dev_dependencies:
 dependencies: 
   dcli_core: ^0.0.5
   galileo_mysql: ^3.0.0
+  intl: ^0.17.0
   logger: ^1.1.0
   settings_yaml: ^3.3.1
