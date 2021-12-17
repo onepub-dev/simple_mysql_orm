@@ -1,0 +1,10 @@
+# until we have a beter solution we need to set mysql to use native passwords.
+# Add the following to the mysqld section of my.ini
+# [mysqld]
+# default_authentication_plugin=mysql_native_password
+mysql_user: root
+mysql_password: the cat lives here
+mysql_host: localhost
+mysql_port: 3306
+mysql_db: onepub_test
+

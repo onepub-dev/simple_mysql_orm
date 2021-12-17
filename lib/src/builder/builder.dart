@@ -1,10 +1,10 @@
 library builder;
 
-import '../dao/db.dart';
 import '../dao/dao.dart';
+import '../dao/db.dart';
 
-part 'select.dart';
 part 'delete.dart';
+part 'select.dart';
 
 class Builder<E> {
   Builder.withDb(this.db, this.dao);

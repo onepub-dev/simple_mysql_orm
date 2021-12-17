@@ -82,10 +82,9 @@ class Db {
     return value;
   }
 
-  Future<void> transaction(Function() action) async {
-    // ignore: avoid_annotating_with_dynamic
-    await _connection!.transaction((dynamic context) => action());
-  }
+  Future<R> transaction<R>(R Function() action) async =>
+      // ignore: avoid_annotating_with_dynamic
+      await _connection!.transaction((dynamic context) => action()) as R;
 }
 
 class MySQLException implements Exception {

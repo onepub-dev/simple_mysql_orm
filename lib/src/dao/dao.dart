@@ -1,12 +1,19 @@
 import 'package:galileo_mysql/galileo_mysql.dart' hide MySqlConnection;
 import 'package:intl/intl.dart';
-import 'db.dart';
-import '../model/entity.dart';
+
 import '../builder/builder.dart';
+import '../model/entity.dart';
+import 'db.dart';
 import 'row.dart';
+import 'transaction.dart';
 
 abstract class Dao<E> {
-  Dao(this.db, this._tablename);
+  /// Create a dao object taking the Database from
+  /// the in scope [Transaction]
+  Dao(this._tablename) : db = transaction.db;
+
+  /// Create a dao object with passed [db]
+  Dao.withDb(this.db, this._tablename);
 
   Db db;
   final String _tablename;
@@ -118,10 +125,12 @@ abstract class Dao<E> {
 
   /// converts each value to a format suitable to
   /// write to mysql.
-  List<String> convertToDb(ValueList values) {
-    List<String> convertedValues = <String>[];
+  List<String?> convertToDb(ValueList values) {
+    final convertedValues = <String?>[];
     for (final value in values) {
-      if (value.runtimeType == DateTime) {
+      if (value == null) {
+        convertedValues.add(null);
+      } else if (value.runtimeType == DateTime) {
         convertedValues
             .add(DateFormat('yyyy-MM-dd hh:mm:ss').format(value as DateTime));
       } else if (value.runtimeType == bool) {

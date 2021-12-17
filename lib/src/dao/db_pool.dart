@@ -81,6 +81,7 @@ class DbPool {
 
   final SharedPool<Db> pool;
 
+  /// obtains a wrapper containg a [Db] connection
   Future<ConnectionWrapper<Db>> obtain() async => pool.get();
   Future<void> release(ConnectionWrapper<Db> wrapper) async {
     await pool.release(wrapper);
