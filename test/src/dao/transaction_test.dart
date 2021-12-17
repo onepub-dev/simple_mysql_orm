@@ -11,7 +11,7 @@ void main() {
   });
   test('transaction ...', () async {
     var ran = false;
-    await await withTransaction(() async {
+    await withTransaction(() async {
       final db = transaction.db;
       expect(db, isNotNull);
       final dao = PublisherDao();

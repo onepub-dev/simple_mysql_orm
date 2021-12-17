@@ -82,7 +82,7 @@ class Db {
     return value;
   }
 
-  Future<R> transaction<R>(R Function() action) async =>
+  Future<R> transaction<R>(Future<R> Function() action) async =>
       // ignore: avoid_annotating_with_dynamic
       await _connection!.transaction((dynamic context) => action()) as R;
 }

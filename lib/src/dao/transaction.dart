@@ -14,7 +14,7 @@ Transaction get transaction => inject(transactionToken);
 /// committed.
 /// If [action] throws any exception the transaction is
 /// rollback.
-Future<R> withTransaction<R>(R Function() action) async {
+Future<R> withTransaction<R>(Future<R> Function() action) async {
   final wrapper = await DbPool().obtain();
 
   final transaction = Transaction<R>(wrapper.wrapped);
@@ -86,7 +86,8 @@ class Transaction<R> {
   //   db.rollback();
   // }
 
-  Future<R> run(R Function() action) async => db.transaction(() => action());
+  Future<R> run(Future<R> Function() action) async =>
+      db.transaction(() => action());
 }
 
 class InvalidTransactionStateException implements Exception {
