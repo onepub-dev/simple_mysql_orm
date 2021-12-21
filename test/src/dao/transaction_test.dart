@@ -12,7 +12,7 @@ void main() {
   test('transaction ...', () async {
     var ran = false;
     await withTransaction(() async {
-      final db = transaction.db;
+      final db = Transaction.current.db;
       expect(db, isNotNull);
       final dao = PublisherDao();
       await dao.delete().where().eq('name', 'brett').run();

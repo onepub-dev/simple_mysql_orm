@@ -10,7 +10,7 @@ import 'transaction.dart';
 abstract class Dao<E> {
   /// Create a dao object taking the Database from
   /// the in scope [Transaction]
-  Dao(this._tablename) : db = transaction.db;
+  Dao(this._tablename) : db = Transaction.current.db;
 
   /// Create a dao object with passed [db]
   Dao.withDb(this.db, this._tablename);
