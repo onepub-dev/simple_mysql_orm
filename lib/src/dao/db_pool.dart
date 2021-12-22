@@ -90,6 +90,7 @@ class DbPool {
   static String mysqMaxPoolSizKey = 'MYSQL_MAX_POOL_SIZE';
   static String mysqMinPoolSizKey = 'MYSQL_MIN_POOL_SIZE';
 
+  /// Runs action passing in a [Db] from the pool
   Future<T> withDb<T>(Future<T> Function(Db db) action) async {
     final wrapper = await obtain();
     try {
