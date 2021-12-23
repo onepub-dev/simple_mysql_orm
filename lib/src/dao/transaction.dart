@@ -1,7 +1,9 @@
+import 'package:meta/meta.dart';
 import 'package:scope/scope.dart';
 
 import 'db.dart';
 import 'db_pool.dart';
+import 'shared_pool.dart';
 
 /// Obtains a connection and starts a MySQL transaction.
 ///
@@ -41,37 +43,66 @@ import 'db_pool.dart';
 /// of a [withTransaction] call.
 ///
 /// In this case pass [TransactionNesting.detached].
+/// A new [Db] connection will be obtained and a new MySQL transaction
+/// will be started. You need to be careful that you don't create a live
+/// lock (two transactions viaing for the same resources).
 ///
-/// A new [Db] connection will always be obtained and a new MySQL transaction
-/// will be started.
-///
+/// [useTransaction] is intended for debugging purposes.
+/// By setting [useTransaction] any db changes are visible
+/// as soon as the occur rather than only once the transaction
+/// completes. So this option allows you to inspect the db
+/// as updates occur.
 Future<R> withTransaction<R>(Future<R> Function() action,
-    {TransactionNesting nesting = TransactionNesting.notAllowed}) async {
-  final wrapper = await DbPool().obtain();
+    {TransactionNesting nesting = TransactionNesting.notAllowed,
+    bool useTransaction = true}) async {
+  final nestedTransaction = Scope.hasScopeKey(Transaction.transactionKey);
 
-  final transaction = Transaction<R>(wrapper.wrapped);
+  switch (nesting) {
+    case TransactionNesting.notAllowed:
+      if (nestedTransaction) {
+        throw NestedTransactionException('You are already in a transaction. '
+            'Specify TransactionNesting.nestedTransaction');
+      }
+      return _runTransaction(action,
+          useTransaction: useTransaction, shareDb: false);
 
-  return (Scope()..value(Transaction._transactionKey, transaction))
+    case TransactionNesting.detached:
+      return _runTransaction(action,
+          useTransaction: useTransaction, shareDb: false);
+
+    case TransactionNesting.nested:
+      return _runTransaction(action,
+          useTransaction: useTransaction && !nestedTransaction,
+          shareDb: nestedTransaction);
+  }
+}
+
+Future<R> _runTransaction<R>(Future<R> Function() action,
+    {required bool useTransaction, required bool shareDb}) async {
+  ConnectionWrapper<Db>? wrapper;
+
+  Db db;
+  if (shareDb) {
+    db = Transaction.current.db;
+  } else {
+    wrapper = await DbPool().obtain();
+    db = wrapper.wrapped;
+  }
+
+  final transaction = Transaction<R>(db);
+
+  return (Scope()..value(Transaction.transactionKey, transaction))
       .run(() async {
     try {
-      return await transaction.run(() => action());
+      return await transaction.run(action, useTransaction: useTransaction);
       // ignore: avoid_catches_without_on_clauses
     } catch (e) {
-      await DbPool().release(wrapper);
+      if (wrapper != null) {
+        await DbPool().release(wrapper);
+      }
       rethrow;
     }
   });
-
-//  final tran = Transaction();
-
-  // try {
-  //   action(tran.db);
-  //   tran._commit();
-  //   // ignore: avoid_catches_without_on_clauses
-  // } catch (e) {
-  //   tran._rollback();
-  //   rethrow;
-  // }
 }
 
 class NestedTransactionException implements Exception {
@@ -90,15 +121,28 @@ class Transaction<R> {
     // _begin();
   }
 
-  static Transaction get current => use(_transactionKey);
+  static Transaction get current => use(transactionKey);
   final Db db;
 
-  static final ScopeKey<Db> _dbKey = ScopeKey<Db>('transaction db');
-  
-  static final ScopeKey<Transaction> _transactionKey =
+  @visibleForTesting
+  static final ScopeKey<Transaction> transactionKey =
       ScopeKey<Transaction>('transaction');
 
-  Transaction get transaction => use(_transactionKey);
+  // Transaction get transaction => use(transactionKey);
+
+  /// [useTransaction] is intended for debugging purposes.
+  /// By setting [useTransaction] and db changes are visible
+  /// as soon as the occur rather than only once the transaction
+  /// completes. So this option allows you to inspect the db
+  /// as updates occur.
+  Future<R> run(Future<R> Function() action,
+      {required bool useTransaction}) async {
+    if (!useTransaction) {
+      return action();
+    } else {
+      return db.transaction(() => action());
+    }
+  }
 
   // /// The transaction has started
   // bool started = false;
@@ -136,8 +180,6 @@ class Transaction<R> {
   //   db.rollback();
   // }
 
-  Future<R> run(Future<R> Function() action) async =>
-      db.transaction(() => action());
 }
 
 class InvalidTransactionStateException implements Exception {
