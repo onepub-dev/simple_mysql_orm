@@ -1,6 +1,7 @@
 name: simple_mysql_orm
 version: 1.1.0
 description: A simple command-line application.
+repository: 
 environment: 
   sdk: '>=2.15.0 <3.0.0'
 dependencies: 
@@ -15,6 +16,7 @@ dev_dependencies:
   dcli: ^1.15.5
   lint_hard: ^1.0.0
   test: ^1.19.5
-dependency_overrides: 
-  scope: 
+
+dependency_overrides:
+  scope:
     path: ../scope
