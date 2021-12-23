@@ -41,7 +41,7 @@ abstract class Dao<E> {
     }
     if (rows.length != 1) {
       throw TooManyResultsException(
-          'Multiple $_tablename named $fieldName found');
+          'Multiple ${_tablename}s named $fieldName found.');
     }
     return rows.first;
   }
@@ -52,8 +52,12 @@ abstract class Dao<E> {
   Future<E?> getByFieldInt(String fieldName, int fieldValue) async =>
       getByField(fieldName, '$fieldValue');
 
-  Future<E?> getByFieldDate(String fieldName, DateTime fieldValue) async =>
-      getByField(fieldName, '$fieldValue');
+  Future<E?> getByFieldDate(String fieldName, DateTime fieldValue) async {
+    final formatter = DateFormat('yyyy-MM-dd');
+    final formatted = formatter.format(fieldValue);
+
+    return getByField(fieldName, formatted);
+  }
 
   Future<E> getByIdExpected(int id) async {
     final e = await getById(id);
@@ -101,7 +105,7 @@ abstract class Dao<E> {
 
   Future<void> update(Entity<E> entity) async {
     final fields = entity.fields;
-    final values = entity.values;
+    final values = convertToDb(entity.values);
 
     final sql = 'update $_tablename '
         'set `${fields.join("`=?, `")}`=? '
