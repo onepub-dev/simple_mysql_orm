@@ -77,7 +77,7 @@ class SharedPool<T> implements Pool<T> {
         manager.close(r.wrapped);
         // ignore: avoid_catches_without_on_clauses
       } catch (e, st) {
-        logger.severe('Failed closing connection', e, st);
+        logger.severe(() => 'Failed closing connection', e, st);
       }
     }
   }

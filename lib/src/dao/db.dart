@@ -1,10 +1,11 @@
 import 'dart:async';
+import 'dart:math';
 
 import 'package:dcli_core/dcli_core.dart';
 import 'package:galileo_mysql/galileo_mysql.dart';
-import 'package:logging/logging.dart';
 
 import '../model/entity.dart';
+import '../util/fast_logger.dart';
 
 int nextId = 0;
 
@@ -45,7 +46,7 @@ class Db {
     settings = ConnectionSettings(
         host: host, port: port, user: user, password: password, db: database);
   }
-  final logger = Logger('Db');
+  final logger = FastLogger('Db');
 
   /// Unique id used in logging to identify which [Db] conection
   /// was used to execute a query.
@@ -82,7 +83,7 @@ class Db {
   ///   where id = ?', [userId]);
   /// ```
   Future<Results> query(String query, [ValueList? values]) async {
-    logger.info('Db: $id $query, ${values?.join(',')}');
+    logger.info(() => 'Db: $id $query, values:[${_expandValues(values)}]');
     return connection.query(query, values);
   }
 
@@ -97,6 +98,30 @@ class Db {
   Future<R> transaction<R>(Future<R> Function() action) async =>
       // ignore: avoid_annotating_with_dynamic
       await _connection!.transaction((dynamic context) => action()) as R;
+
+  Future<void> rollback() async {
+    await query('rollback');
+  }
+
+  String _expandValues(ValueList? values) {
+    final sb = StringBuffer();
+
+    if (values == null) {
+      return '';
+    }
+    for (final value in values) {
+      if (sb.isNotEmpty) {
+        sb.write(', ');
+      }
+      final sValue = value.toString();
+      final length = sValue.length;
+      sb.write(sValue.substring(0, min(length, 20)));
+      if (length > 20) {
+        sb.write('[..$length]');
+      }
+    }
+    return sb.toString();
+  }
 }
 
 class MySQLException implements Exception {
