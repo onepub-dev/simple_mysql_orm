@@ -1,19 +1,8 @@
 name: simple_mysql_orm
+version: 1.1.0
 description: A simple command-line application.
-version: 1.0.0
-# homepage: https://www.example.com
-
-environment:
+environment: 
   sdk: '>=2.15.0 <3.0.0'
-
-
-# dependencies:
-#   path: ^1.8.0
-
-dev_dependencies:
-  dcli: ^1.15.5
-  lint_hard: ^1.0.0
-  test: ^1.19.5
 dependencies: 
   dcli_core: ^0.0.5
   galileo_mysql: ^3.0.0
@@ -22,7 +11,10 @@ dependencies:
   meta: ^1.7.0
   scope: ^1.0.0
   settings_yaml: ^3.3.1
-
-dependency_overrides:
-  scope:
-    path: ../scope    
+dev_dependencies: 
+  dcli: ^1.15.5
+  lint_hard: ^1.0.0
+  test: ^1.19.5
+dependency_overrides: 
+  scope: 
+    path: ../scope
