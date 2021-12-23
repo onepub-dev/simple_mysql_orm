@@ -19,6 +19,7 @@ dependencies:
   galileo_mysql: ^3.0.0
   intl: ^0.17.0
   logger: ^1.1.0
+  meta: ^1.7.0
   scope: ^1.0.0
   settings_yaml: ^3.3.1
 
