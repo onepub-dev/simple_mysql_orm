@@ -1,6 +1,7 @@
 import 'package:meta/meta.dart';
 import 'package:scope/scope.dart';
 
+import '../util/fast_logger.dart';
 import 'db.dart';
 import 'db_pool.dart';
 import 'shared_pool.dart';
@@ -89,12 +90,12 @@ Future<R> _runTransaction<R>(Future<R> Function() action,
     db = wrapper.wrapped;
   }
 
-  final transaction = Transaction<R>(db);
+  final transaction = Transaction<R>(db, useTransaction: useTransaction);
 
   return (Scope()..value(Transaction.transactionKey, transaction))
       .run(() async {
     try {
-      return await transaction.run(action, useTransaction: useTransaction);
+      return await transaction.run(action);
       // ignore: avoid_catches_without_on_clauses
     } catch (e) {
       if (wrapper != null) {
@@ -117,12 +118,30 @@ enum TransactionNesting {
 }
 
 class Transaction<R> {
-  Transaction(this.db) {
+  /// Create a database transaction for [db].
+  ///
+  /// If [useTransaction] is false the transation
+  /// isn't created. This should only be used for debugging.
+  Transaction(this.db, {required this.useTransaction}) : id = nextId++ {
     // _begin();
   }
 
+  final logger = FastLogger('Transaction');
+
+  static int nextId = 0;
+
+  /// unique id used for debugging
+  int id;
+
   static Transaction get current => use(transactionKey);
   final Db db;
+
+  /// For debugging purposes the user can suppress
+  /// the use of a transaction so that they can see db
+  /// updates as they happen.
+  final bool useTransaction;
+
+  bool _commited = false;
 
   @visibleForTesting
   static final ScopeKey<Transaction> transactionKey =
@@ -135,12 +154,21 @@ class Transaction<R> {
   /// as soon as the occur rather than only once the transaction
   /// completes. So this option allows you to inspect the db
   /// as updates occur.
-  Future<R> run(Future<R> Function() action,
-      {required bool useTransaction}) async {
+  Future<R> run(Future<R> Function() action) async {
+    logger.info(() =>
+        'Start transaction($id db: ${db.id}): useTransaction: $useTransaction');
     if (!useTransaction) {
-      return action();
+      final result = await action();
+      _commited = true;
+      logger.info(() =>
+          'End transaction($id db: ${db.id}): useTransaction: $useTransaction');
+      return result;
     } else {
-      return db.transaction(() => action());
+      final result = await db.transaction(() async => action());
+      _commited = true;
+      logger.info(() =>
+          'End transaction($id db: ${db.id}): useTransaction: $useTransaction');
+      return result;
     }
   }
 
@@ -171,15 +199,16 @@ class Transaction<R> {
   //   committed = true;
   // }
 
-  // void _rollback() {
-  //   if (committed) {
-  //     throw InvalidTransactionStateException(
-  //  'commit has already been called');
-  //   }
+  void rollback() {
+    if (!useTransaction) {
+      return;
+    }
+    if (_commited) {
+      throw InvalidTransactionStateException('commit has already been called');
+    }
 
-  //   db.rollback();
-  // }
-
+    db.rollback();
+  }
 }
 
 class InvalidTransactionStateException implements Exception {
