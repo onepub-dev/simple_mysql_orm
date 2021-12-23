@@ -2,8 +2,11 @@ import 'dart:async';
 
 import 'package:dcli_core/dcli_core.dart';
 import 'package:galileo_mysql/galileo_mysql.dart';
+import 'package:logging/logging.dart';
 
 import '../model/entity.dart';
+
+int nextId = 0;
 
 class Db {
   // factory Db() {
@@ -31,15 +34,22 @@ class Db {
       user: settings.user!,
       password: settings.password!);
 
-  Db._internal(
-      {required String host,
-      required int port,
-      required String user,
-      required String password,
-      required String database}) {
+  Db._internal({
+    required String host,
+    required int port,
+    required String user,
+    required String password,
+    required String database,
+  }) {
+    id = nextId++;
     settings = ConnectionSettings(
         host: host, port: port, user: user, password: password, db: database);
   }
+  final logger = Logger('Db');
+
+  /// Unique id used in logging to identify which [Db] conection
+  /// was used to execute a query.
+  late final int id;
 
   static String mysqlPortKey = 'MYSQL_PORT';
   static String mysqlHostKey = 'MYSQL_HOST';
@@ -71,8 +81,10 @@ class Db {
   ///  var results = await conn.query('select name, email from users
   ///   where id = ?', [userId]);
   /// ```
-  Future<Results> query(String query, [ValueList? values]) async =>
-      connection.query(query, values);
+  Future<Results> query(String query, [ValueList? values]) async {
+    logger.info('Db: $id $query, ${values?.join(',')}');
+    return connection.query(query, values);
+  }
 
   static String getEnv(String key, {String? defaultValue}) {
     final value = env[key] ?? defaultValue;

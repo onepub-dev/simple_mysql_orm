@@ -1,6 +1,7 @@
 import 'dart:async';
 
-import 'package:logger/logger.dart';
+import 'package:logging/logging.dart';
+
 import '../util/counted_set.dart';
 
 /// Creates a [Pool] whose members can be shared. The pool keeps a record of
@@ -25,7 +26,7 @@ class SharedPool<T> implements Pool<T> {
   @override
   final ConnectionManager<T> manager;
 
-  late final logger = Logger();
+  late final logger = Logger('SharedPool');
 
   final int minSize;
   final int maxSize;
@@ -76,7 +77,7 @@ class SharedPool<T> implements Pool<T> {
         manager.close(r.wrapped);
         // ignore: avoid_catches_without_on_clauses
       } catch (e, st) {
-        logger.e('Failed closing connection', e, st);
+        logger.severe('Failed closing connection', e, st);
       }
     }
   }
