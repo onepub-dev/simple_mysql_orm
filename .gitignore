@@ -21,3 +21,4 @@ doc/api/
 *.js.map
 .history
 test/settings.yaml
+.failed_tracker
