@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:galileo_mysql/galileo_mysql.dart' hide MySqlConnection;
 import 'package:intl/intl.dart';
 
@@ -22,7 +24,6 @@ abstract class Dao<E> {
 
   Select<E> select() => Builder<E>.withDb(db, this).select();
   Delete<E> delete() => Builder<E>.withDb(db, this).delete();
-
   Future<List<E>> query(String query, ValueList values) async {
     final results = await db.query(query, values);
 
@@ -130,13 +131,22 @@ abstract class Dao<E> {
     for (final value in values) {
       if (value == null) {
         convertedValues.add(null);
-      } else if (value.runtimeType == DateTime) {
-        convertedValues
-            .add(DateFormat('yyyy-MM-dd hh:mm:ss').format(value as DateTime));
-      } else if (value.runtimeType == bool) {
-        final v = value as bool;
+      }
+      // datetime
+      else if (value is DateTime) {
+        convertedValues.add(DateFormat('yyyy-MM-dd hh:mm:ss').format(value));
+      }
+      // bool
+      else if (value is bool) {
+        final v = value;
         convertedValues.add(v ? '1' : '0');
-      } else {
+      }
+      // map
+      else if (value is Map) {
+        convertedValues.add(jsonEncode(value));
+      }
+      // anything else we convert to a string.
+      else {
         convertedValues.add(value.toString());
       }
     }
