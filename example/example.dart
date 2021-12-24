@@ -1,21 +1,3 @@
-# A simple ORM for MySQL
-
-simple_mysql_orm provides a thin wrapper for the galileo_mysql package adding
-in an Object Relational Mapping (orm) layer.
-
-Features:
-  * full transaction support
-  * DB connection pool
-  * a really crappy builder (help wanted to make this useful)
-
-Currently you need to manually build the bindings between each class and the
-underlying table but it's a fairly simple process.
-
-If you are intersted in getting involved I'm looking to add auto generation of the bindings based on a class and/or db schema.
-
-Example usage. See the examples directory for the full workings.
-
-```dart
 import 'package:logging/logging.dart';
 import 'package:settings_yaml/settings_yaml.dart';
 import 'package:simple_mysql_orm/simple_mysql_orm.dart';
@@ -34,7 +16,7 @@ Future<void> main() async {
   SettingsYaml.fromString(content: settingsYaml, filePath: 'settings.yaml')
       .save();
 
-  /// Initialise the db pool from the setings.
+  /// Initialise the db pool
   DbPool.fromSettings(pathToSettings: 'settings.yaml');
 
   /// create a transaction and run a set of queries
@@ -77,7 +59,3 @@ mysql_host: localhost
 mysql_port: 3306
 mysql_db: some_db_name
 ''';
-
-```
-
-
