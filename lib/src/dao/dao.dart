@@ -114,7 +114,7 @@ abstract class Dao<E> {
     await db.query(sql, [...values, entity.id]);
   }
 
-  Future<void> deleteByEntity(Entity<E> entity) async {
+  Future<void> remove(Entity<E> entity) async {
     final sql = 'delete from $_tablename where id = ?';
 
     await db.query(sql, [entity.id]);
