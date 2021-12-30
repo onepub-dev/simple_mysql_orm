@@ -1,3 +1,8 @@
+# 1.1.1
+- moved to di_zone2 until scope is released.
+- Added examples and readme.
+- renamed deleteByEntity to remove.
+
 # 1.1.0
 - Added rollback method to allow a transaction to manually be rolled back.
 - Added support for json encoding maps when saving a field to db.
