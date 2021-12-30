@@ -3,9 +3,9 @@ import 'dart:math';
 
 import 'package:dcli_core/dcli_core.dart';
 import 'package:galileo_mysql/galileo_mysql.dart';
+import 'package:logging/logging.dart';
 
 import '../model/entity.dart';
-import '../util/fast_logger.dart';
 
 int nextId = 0;
 
@@ -46,7 +46,7 @@ class Db {
     settings = ConnectionSettings(
         host: host, port: port, user: user, password: password, db: database);
   }
-  final logger = FastLogger('Db');
+  final logger = Logger('Db');
 
   /// Unique id used in logging to identify which [Db] conection
   /// was used to execute a query.
