@@ -133,7 +133,18 @@ class Transaction<R> {
   /// unique id used for debugging
   int id;
 
-  static Transaction get current => use(transactionKey);
+  static Transaction get current {
+    Transaction transaction;
+
+    try {
+      transaction = use(transactionKey);
+    } on MissingDependencyException catch (_) {
+      throw TransactionNotInScopeException();
+    }
+
+    return transaction;
+  }
+
   final Db db;
 
   /// For debugging purposes the user can suppress
@@ -214,4 +225,12 @@ class Transaction<R> {
 class InvalidTransactionStateException implements Exception {
   InvalidTransactionStateException(this.message);
   String message;
+}
+
+class TransactionNotInScopeException implements Exception {
+  TransactionNotInScopeException();
+  @override
+  String toString() =>
+      'You tried to access a Transaction when none was in scope.'
+      ' Check that you are within a call to withTransaction()';
 }
