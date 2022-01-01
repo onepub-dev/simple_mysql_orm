@@ -2,7 +2,7 @@ import 'package:dcli/dcli.dart';
 import 'package:simple_mysql_orm/simple_mysql_orm.dart';
 import 'package:test/test.dart';
 
-import '../../test_dao/dao/publisher_dao.dart';
+import '../../test_dao/dao/uploader_dao.dart';
 
 final settingsPath = join('test', 'settings.yaml');
 void main() {

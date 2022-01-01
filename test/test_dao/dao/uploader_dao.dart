@@ -16,7 +16,7 @@ class PublisherDao extends Dao<Publisher> {
     return row;
   }
 
-  static String get tablename => 'publisher';
+  static String get tablename => 'uploader';
 
   @override
   Publisher fromRow(Row row) => Publisher.fromRow(row);
