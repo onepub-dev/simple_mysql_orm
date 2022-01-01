@@ -79,6 +79,8 @@ abstract class Dao<E> {
     return rows.first;
   }
 
+  Future<List<E>> getAll() async => query('select * from $_tablename', []);
+
   List<E> fromResults(Results results) {
     final rows = <E>[];
     for (final results in results) {
