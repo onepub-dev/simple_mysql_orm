@@ -1,6 +1,5 @@
 import 'package:dcli/dcli.dart' hide equals;
 import 'package:di_zone2/di_zone2.dart';
-
 import 'package:simple_mysql_orm/simple_mysql_orm.dart';
 import 'package:test/test.dart';
 
