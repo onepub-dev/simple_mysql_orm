@@ -1,3 +1,6 @@
+# 1.2.0
+- Added Dao.getAll method to return all rows in a table.
+
 # 1.1.1
 - moved to di_zone2 until scope is released.
 - Added examples and readme.
