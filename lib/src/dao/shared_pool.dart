@@ -1,8 +1,8 @@
 import 'dart:async';
 
 import 'package:logging/logging.dart';
-
-import '../util/counted_set.dart';
+import '../exceptions.dart';
+import 'db.dart';
 
 /// Creates a [Pool] whose members can be shared. The pool keeps a record of
 /// between [minSize] and [maxSize] open items.
@@ -20,9 +20,28 @@ import '../util/counted_set.dart';
 ///              age INT);");
 ///       await conn.release();
 ///     }
-class SharedPool<T> implements Pool<T> {
-  SharedPool(this.manager, {this.minSize = 10, this.maxSize = 10})
-      : _d = maxSize - minSize;
+class SharedPool<T extends ID> implements Pool<T> {
+  SharedPool(
+    this.manager, {
+    required this.excessDuration,
+    this.minSize = 10,
+    this.maxSize = 10,
+  }) {
+    if (minSize < 0) {
+      throw ConfigurationException(
+          'The DBPool must have a minSize > 0, found $minSize');
+    }
+    if (maxSize < minSize) {
+      throw ConfigurationException('The DBPool maxSize must be >= minSize. '
+          'Found minSize: $minSize maxSize: $maxSize');
+    }
+
+    // we start in a state where we have connections available.
+    available.complete(true);
+
+    // start delayed future to release excess connections.
+    _releaseExcess();
+  }
   @override
   final ConnectionManager<T> manager;
 
@@ -30,56 +49,117 @@ class SharedPool<T> implements Pool<T> {
 
   final int minSize;
   final int maxSize;
-  final _pool = CountedSet<ConnectionWrapper<T>>();
+  final Duration excessDuration;
+
+  /// Used to track the set of connections and whether
+  /// they are in use.
+  final _pool = <ConnectionWrapper<T>, bool>{};
+
+  int get size => _pool.length;
 
   Future<ConnectionWrapper<T>> _createNew() async {
     final n = await manager.open();
     final conn = ConnectionWrapper._(this, n);
-    _pool.add(1, conn);
+    _pool[conn] = false;
+    logger.info(() => 'Created new connection: ${conn.wrapped.id}');
+
     return conn;
   }
 
+  Completer<bool> available = Completer<bool>();
+
   /// Returns a connection
   @override
-  Future<ConnectionWrapper<T>> get() async {
-    if (_pool.numAt(0) > 0 || _pool.length >= maxSize) {
-      final conn = _pool.leastUsed!;
-      _pool.inc(conn);
-      return conn;
+  Future<ConnectionWrapper<T>> obtain() async {
+    final conn = _findUnusedConnection();
+
+    if (conn != null) {
+      return _allocate(conn);
     }
-    return _createNew();
+
+    /// we have no unused connections.
+    if (_pool.length >= maxSize) {
+      /// we need to wait for a connection to become available
+      available = Completer<bool>();
+      // wait for a connection to become available
+      logger.info(() => 'awaiting connection');
+      await available.future;
+      return _allocate(_findUnusedConnection()!);
+    }
+
+    return _allocate(await _createNew());
   }
 
-  final int _d;
+  ConnectionWrapper<T>? _findUnusedConnection() {
+    for (final connection in _pool.keys) {
+      if (_pool[connection] == false) {
+        return connection;
+      }
+    }
+    return null;
+  }
+
+  /// Over time we want to release connections that
+  /// have not been used and are in excess of [minSize]
+  /// We release one connection every minute provided
+  /// it hasn't been used for at least a minute;
+  void _releaseExcess() {
+    logger.info(() => 'releaseExcess called');
+    if (_pool.length > minSize) {
+      logger.info(() => 'Found potentional connections to release');
+      final oneMinuteAgo = DateTime.now().subtract(excessDuration);
+      for (final conn in _pool.keys) {
+        if (_pool[conn] == true) {
+          logger.info(() => 'connection ${conn.wrapped.id} in use');
+
+          /// connection is in use.
+          continue;
+        }
+        if (conn.lastUsed.isBefore(oneMinuteAgo)) {
+          _pool.remove(conn);
+
+          try {
+            manager.close(conn.wrapped);
+            logger.info(
+                () => 'removed from pool unused connection ${conn.wrapped.id}');
+            // ignore: avoid_catches_without_on_clauses
+          } catch (e, st) {
+            logger.severe(() => 'Failed closing connection', e, st);
+          }
+
+          /// we release no more than one per minute.
+          break;
+        }
+      }
+    }
+
+    Future.delayed(excessDuration, _releaseExcess);
+  }
 
   /// Releases [connection] back to the pool
   @override
   Future<void> release(ConnectionWrapper<T> connection) async {
-    if (_d <= 0) {
-      return;
+    _deallocate(connection);
+
+    /// tell anyone trying to obtain a connection
+    /// that we now have some available.
+    if (!available.isCompleted) {
+      logger.info(() => 'flagged connections available');
+      available.complete(true);
     }
-    if (!connection.isReleased) {
-      _pool.dec(connection);
-    }
-    if (_pool.length != maxSize) {
-      return;
-    }
-    if (_pool.numAt(0) < _d) {
-      return;
-    }
-    final removes = _pool.removeAllAt(0);
-    for (final r in removes) {
-      try {
-        if (r.isReleased) {
-          continue;
-        }
-        r.isReleased = true;
-        manager.close(r.wrapped);
-        // ignore: avoid_catches_without_on_clauses
-      } catch (e, st) {
-        logger.severe(() => 'Failed closing connection', e, st);
-      }
-    }
+  }
+
+  ConnectionWrapper<T> _allocate(ConnectionWrapper<T> conn) {
+    logger.info(() => 'obtained connection ${conn.wrapped.id}');
+
+    /// mark it as inuse
+    _pool[conn] = true;
+    return conn;
+  }
+
+  void _deallocate(ConnectionWrapper<T> conn) {
+    logger.info(() => 'released connection ${conn.wrapped.id}');
+    _pool[conn] = false;
   }
 }
 
@@ -100,6 +180,9 @@ class ConnectionWrapper<T> {
   bool isReleased = false;
 
   T get wrapped => _wrapped;
+
+  /// when this connection was last used.
+  DateTime lastUsed = DateTime.now();
 }
 
 /// Interface to open and close the connection [C]
@@ -117,7 +200,7 @@ abstract class Pool<T> {
   ConnectionManager<T> get manager;
 
   /// Returns a new connection
-  Future<ConnectionWrapper<T>> get();
+  Future<ConnectionWrapper<T>> obtain();
 
   /// Releases [connection] back to the pool.
   Future<void> release(ConnectionWrapper<T> connection);

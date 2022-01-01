@@ -4,6 +4,7 @@ import 'package:galileo_mysql/galileo_mysql.dart' hide MySqlConnection;
 import 'package:intl/intl.dart';
 
 import '../builder/builder.dart';
+import '../exceptions.dart';
 import '../model/entity.dart';
 import 'db.dart';
 import 'row.dart';
@@ -158,14 +159,4 @@ abstract class Dao<E> {
     }
     return convertedValues;
   }
-}
-
-class TooManyResultsException implements Exception {
-  TooManyResultsException(this.message);
-  String message;
-}
-
-class IntegrityException implements Exception {
-  IntegrityException(this.message);
-  String message;
 }

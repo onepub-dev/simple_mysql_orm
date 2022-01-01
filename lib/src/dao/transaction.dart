@@ -2,6 +2,7 @@ import 'package:di_zone2/di_zone2.dart';
 import 'package:logging/logging.dart';
 import 'package:meta/meta.dart';
 
+import '../exceptions.dart';
 import 'db.dart';
 import 'db_pool.dart';
 import 'shared_pool.dart';
@@ -88,6 +89,7 @@ Future<R> _runTransaction<R>(Future<R> Function() action,
   } else {
     wrapper = await DbPool().obtain();
     db = wrapper.wrapped;
+    
   }
 
   final transaction = Transaction<R>(db, useTransaction: useTransaction);
@@ -106,10 +108,6 @@ Future<R> _runTransaction<R>(Future<R> Function() action,
   });
 }
 
-class NestedTransactionException implements Exception {
-  NestedTransactionException(this.message);
-  String message;
-}
 
 enum TransactionNesting {
   detached,

@@ -2,14 +2,14 @@ import 'dart:async';
 import 'dart:math';
 
 import 'package:dcli_core/dcli_core.dart';
-import 'package:galileo_mysql/galileo_mysql.dart';
+import 'package:galileo_mysql/galileo_mysql.dart' as g;
 import 'package:logging/logging.dart';
 
 import '../model/entity.dart';
 
 int nextId = 0;
 
-class Db {
+class Db implements ID {
   // factory Db() {
   //   if (_self == null) {
   //     throw StateError('You must initialise MySQLConnection first');
@@ -28,7 +28,7 @@ class Db {
         database: env[mysqlDatabaseKey] ?? 'onepub');
   }
 
-  factory Db.fromSettings(ConnectionSettings settings) => Db._internal(
+  factory Db.fromSettings(g.ConnectionSettings settings) => Db._internal(
       database: settings.db!,
       host: settings.host,
       port: settings.port,
@@ -43,13 +43,14 @@ class Db {
     required String database,
   }) {
     id = nextId++;
-    settings = ConnectionSettings(
+    settings = g.ConnectionSettings(
         host: host, port: port, user: user, password: password, db: database);
   }
   final logger = Logger('Db');
 
   /// Unique id used in logging to identify which [Db] conection
   /// was used to execute a query.
+  @override
   late final int id;
 
   static String mysqlPortKey = 'MYSQL_PORT';
@@ -59,11 +60,11 @@ class Db {
   static const String mysqlUsernameKey = 'MYSQL_USER';
   static const String mysqlPasswordKey = 'MYSQL_PASSWORD';
 
-  late final ConnectionSettings settings;
+  late final g.ConnectionSettings settings;
 
-  MySqlConnection? _connection;
+  g.MySqlConnection? _connection;
 
-  MySqlConnection get connection {
+  g.MySqlConnection get connection {
     if (_connection == null) {
       throw StateError('You must call connect() first.');
     }
@@ -71,7 +72,7 @@ class Db {
   }
 
   Future<void> connect() async {
-    _connection = await MySqlConnection.connect(settings);
+    _connection = await g.MySqlConnection.connect(settings);
   }
 
   /// Query the db.
@@ -82,7 +83,7 @@ class Db {
   ///  var results = await conn.query('select name, email from users
   ///   where id = ?', [userId]);
   /// ```
-  Future<Results> query(String query, [ValueList? values]) async {
+  Future<g.Results> query(String query, [ValueList? values]) async {
     logger.info(() => 'Db: $id $query, values:[${_expandValues(values)}]');
     return connection.query(query, values);
   }
@@ -129,4 +130,8 @@ class MySQLException implements Exception {
   String message;
   @override
   String toString() => message;
+}
+
+abstract class ID {
+  int get id;
 }
