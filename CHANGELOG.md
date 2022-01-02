@@ -1,3 +1,6 @@
+# 1.3.2
+- modified withTransaction to allow the return of a nullable value
+
 # 1.3.1
 - the connection retry logic now gives up immediately on access denied as that is never going to recover.
 - added missing async on transaction action.
