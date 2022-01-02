@@ -106,7 +106,8 @@ class Db implements Transactionable {
     inTransaction = true;
     try {
       // ignore: avoid_annotating_with_dynamic
-      return await _connection!.transaction((dynamic context) => action()) as R;
+      return await _connection!.transaction((dynamic context) async => action())
+          as R;
     } finally {
       inTransaction = false;
     }
