@@ -40,8 +40,8 @@ class DbPool {
         settings.asInt(Db.mysqlPortKey.toLowerCase(), defaultValue: 3306);
     final database = settings.asString(Db.mysqlDatabaseKey.toLowerCase(),
         defaultValue: 'onepub');
-    final minSize = settings.asInt(DbPool.mysqMinPoolSizKey, defaultValue: 5);
-    final maxSize = settings.asInt(DbPool.mysqMaxPoolSizKey, defaultValue: 50);
+    final minSize = settings.asInt(DbPool.mysqMinPoolSizeKey, defaultValue: 5);
+    final maxSize = settings.asInt(DbPool.mysqMaxPoolSizeKey, defaultValue: 50);
 
     _self = DbPool._internal(
         host: host,
@@ -58,8 +58,8 @@ class DbPool {
   factory DbPool.fromEnv() {
     final user = Db.getEnv(Db.mysqlUsernameKey);
     final password = Db.getEnv(Db.mysqlPasswordKey);
-    final minSize = Db.getEnv(DbPool.mysqMinPoolSizKey, defaultValue: '5');
-    final maxSize = Db.getEnv(DbPool.mysqMaxPoolSizKey, defaultValue: '50');
+    final minSize = Db.getEnv(DbPool.mysqMinPoolSizeKey, defaultValue: '5');
+    final maxSize = Db.getEnv(DbPool.mysqMaxPoolSizeKey, defaultValue: '50');
 
     _self = DbPool._internal(
       host: env[Db.mysqlHostKey] ?? 'localhost',
@@ -108,8 +108,8 @@ class DbPool {
     await pool.release(wrapper);
   }
 
-  static String mysqMaxPoolSizKey = 'mysql_min_pool_size';
-  static String mysqMinPoolSizKey = 'mysql_max_pool_size';
+  static String mysqMaxPoolSizeKey = 'mysql_max_pool_size';
+  static String mysqMinPoolSizeKey = 'mysql_min_pool_size';
 
   /// Runs action passing in a [Db] from the pool
   Future<T> withDb<T>(Future<T> Function(Db db) action) async {

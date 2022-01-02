@@ -89,7 +89,6 @@ Future<R> _runTransaction<R>(Future<R> Function() action,
   } else {
     wrapper = await DbPool().obtain();
     db = wrapper.wrapped;
-    
   }
 
   final transaction = Transaction<R>(db, useTransaction: useTransaction);
@@ -107,7 +106,6 @@ Future<R> _runTransaction<R>(Future<R> Function() action,
     }
   });
 }
-
 
 enum TransactionNesting {
   detached,

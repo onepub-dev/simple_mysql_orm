@@ -121,8 +121,8 @@ void main() {
     await pool.close();
   });
 
-  /// TODO: add logic to this test to start/stop the mysql service
-  /// whilst this tests runs.
+  // TODO(bsutton): add logic to this test to start/stop the mysql.
+  // whilst this tests runs.
   test('db pool reconnect', () async {
     final pool = DbPool.fromSettings(
         pathToSettings: join('test', 'settings.yaml'),
