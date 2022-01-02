@@ -218,9 +218,33 @@ class SharedPool<T extends Transactionable> implements Pool<T> {
     return _conn!;
   }
 
+  /// Throws a MySQLException if we find a connection
+  /// that hasn't been released or is still in a transaction.
   Future<void> close() async {
+    final inTransaction = <int>[];
+    final notReleased = <int>[];
     for (final conn in _pool.keys) {
+      if (_pool[conn] == true) {
+        notReleased.add(conn.id);
+      }
+      if (conn.inTransaction) {
+        inTransaction.add(conn.id);
+      }
       await conn.close();
+    }
+    var error = '';
+
+    if (inTransaction.isNotEmpty) {
+      error += 'Found one or more connections still in a transation: '
+          '${inTransaction.join(',')}';
+    }
+    if (notReleased.isNotEmpty) {
+      error += 'Found one or more connections not released: '
+          '${notReleased.join(',')}';
+    }
+
+    if (error.isNotEmpty) {
+      throw MySQLException(error);
     }
   }
 
