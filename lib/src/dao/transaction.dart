@@ -94,7 +94,7 @@ Future<R> _runTransaction<R>(Future<R> Function() action,
 
     final transaction = Transaction<R>(db, useTransaction: useTransaction);
 
-    return (Scope()..value(Transaction.transactionKey, transaction))
+    return await (Scope()..value(Transaction.transactionKey, transaction))
         .run(() async => transaction.run(action));
   } finally {
     if (wrapper != null) {
@@ -160,14 +160,16 @@ class Transaction<R> {
   Future<R> run(Future<R> Function() action) async {
     logger.info(() =>
         'Start transaction($id db: ${db.id}): useTransaction: $useTransaction');
-    if (!useTransaction) {
-      final result = await action();
+    if (useTransaction) {
+      /// run using a transaction
+      final result = await db.transaction(() async => action());
       _commited = true;
       logger.info(() =>
           'End transaction($id db: ${db.id}): useTransaction: $useTransaction');
       return result;
     } else {
-      final result = await db.transaction(() async => action());
+      // run without a transaction
+      final result = await action();
       _commited = true;
       logger.info(() =>
           'End transaction($id db: ${db.id}): useTransaction: $useTransaction');
