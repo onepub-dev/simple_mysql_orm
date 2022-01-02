@@ -95,16 +95,26 @@ class DbPool {
 
   static DbPool? _self;
 
+  /// The DbPool is open.
+  bool open = true;
   final SharedPool<Db> pool;
 
   /// returns the no. of connections currently in the pool
   int get size => pool.size;
 
   /// obtains a wrapper containg a [Db] connection
-  Future<ConnectionWrapper<Db>> obtain() async => pool.obtain();
+  Future<ConnectionWrapper<Db>> obtain() async {
+    if (open == false) {
+      throw MySqlORMException('The DbPool has already been closed');
+    }
+    return pool.obtain();
+  }
 
   /// relase the given connection [wrapper] back into the pool.
   Future<void> release(ConnectionWrapper<Db> wrapper) async {
+    if (open == false) {
+      throw MySqlORMException('The DbPool has already been closed');
+    }
     await pool.release(wrapper);
   }
 
@@ -121,7 +131,10 @@ class DbPool {
     }
   }
 
-  Future<void> close() async => pool.close();
+  Future<void> close() async {
+    await pool.close();
+    open = false;
+  }
 }
 
 class MySqlConnectonManager implements ConnectionManager<Db> {
