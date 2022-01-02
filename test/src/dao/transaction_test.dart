@@ -58,6 +58,13 @@ void main() {
     await DbPool().close();
   });
 
+  test('transaction with result', () async {
+    final count = await withTransaction<int>(() async => 1);
+    expect(count, 1);
+
+    final name = await withTransaction<String?>(() async => null);
+    expect(name, isNull);
+  });
   test('nested with no nesting transaction ...', () async {
     var ran = false;
     await withTransaction(() async {

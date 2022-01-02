@@ -102,12 +102,16 @@ class Db implements Transactionable {
   @override
   bool inTransaction = false;
 
-  Future<R> transaction<R>(Future<R> Function() action) async {
+  Future<R?> transaction<R>(Future<R> Function() action) async {
     inTransaction = true;
     try {
+      R? result;
       // ignore: avoid_annotating_with_dynamic
-      return await _connection!.transaction((dynamic context) async => action())
-          as R;
+      await _connection!.transaction((dynamic context) async {
+        result = await action();
+      });
+
+      return result;
     } finally {
       inTransaction = false;
     }
