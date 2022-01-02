@@ -21,10 +21,11 @@ void main() {
         overrideMin: 1);
 
     final obtained = <ConnectionWrapper<Db>>[];
+    var index = 0;
     var released = false;
     Future.delayed(const Duration(seconds: 10), () {
       released = true;
-      return pool.release(obtained[0]);
+      return pool.release(obtained[index++]);
     });
 
     for (var i = 0; i < 3; i++) {
@@ -34,6 +35,10 @@ void main() {
     }
     expect(released, isTrue);
 
+    /// cleanup by releasing all connections.
+    for (var i = index; i < obtained.length; i++) {
+      await pool.release(obtained[index++]);
+    }
     await pool.close();
   });
 
@@ -44,10 +49,11 @@ void main() {
         overrideMin: 1);
 
     final obtained = <ConnectionWrapper<Db>>[];
+    var index = 0;
     var released = false;
     Future.delayed(const Duration(seconds: 10), () {
       released = true;
-      return pool.release(obtained[0]);
+      return pool.release(obtained[index++]);
     });
 
     for (var i = 0; i < 3; i++) {
@@ -59,6 +65,9 @@ void main() {
     /// we should get here before release is called.
     expect(released, isFalse);
 
+    for (var i = index; i < obtained.length; i++) {
+      await pool.release(obtained[index++]);
+    }
     await pool.close();
   });
 

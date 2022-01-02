@@ -1,5 +1,6 @@
 import 'package:dcli/dcli.dart' hide equals;
 import 'package:di_zone2/di_zone2.dart';
+import 'package:logging/logging.dart';
 import 'package:simple_mysql_orm/simple_mysql_orm.dart';
 import 'package:test/test.dart';
 
@@ -8,6 +9,13 @@ import '../../test_dao/model/publisher.dart';
 
 final settingsPath = join('test', 'settings.yaml');
 void main() {
+  setUpAll(() {
+    Logger.root.level = Level.INFO;
+    Logger.root.onRecord.listen((record) {
+      print('${record.level.name}: ${record.time}: ${record.message}');
+    });
+  });
+
   setUp(() {
     if (!exists(dirname(settingsPath))) {
       createDir(dirname(settingsPath), recursive: true);
@@ -19,7 +27,7 @@ void main() {
     await withTransaction(() async {
       expect(() => DbPool().close(), throwsA(isA<MySQLException>()));
     });
-    
+    await DbPool().close();
   });
   test('transaction ...', () async {
     var ran = false;
