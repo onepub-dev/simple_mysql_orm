@@ -1,3 +1,13 @@
+# 1.3.1
+- the connection retry logic now gives up immediately on access denied as that is never going to recover.
+- added missing async on transaction action.
+- added missing awaits when running a transation causing connections to be released whilst the transaction was still running.
+- Fixed a bug where the transaction wasn't releasing a connection on normal completion.
+- We now throw if you attempt to use the DbPool after it has been closed.
+- Added logic to detect connections that haven't been released or are in a transaction when the pool is closed.
+- upgraded to latest version of di_zone2 package. 
+- added logic to cleanup and close the pool for unit testing. Enabled the logger output during testing.
+
 # 1.3.0
 - Added in logic to test if a connection is valid and if not replace it with a new connection. This allows us to wait for the db on startup and survive restarts of the db.
 - Fixed the connection pool which I had blindly copied from another project. It has been 'sharing' out the same connection. Now a connection can only be obtained by one caller. It must be released before it can be re-obtained. Also implemented a background thread to release excess connections at the rate of one per minute.
