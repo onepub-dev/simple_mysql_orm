@@ -15,6 +15,12 @@ void main() {
     DbPool.fromSettings(pathToSettings: settingsPath);
   });
 
+  test('transaction ... obtain/release', () async {
+    await withTransaction(() async {
+      expect(() => DbPool().close(), throwsA(isA<MySQLException>()));
+    });
+    
+  });
   test('transaction ...', () async {
     var ran = false;
     await withTransaction(() async {

@@ -83,28 +83,24 @@ Future<R> _runTransaction<R>(Future<R> Function() action,
     {required bool useTransaction, required bool shareDb}) async {
   ConnectionWrapper<Db>? wrapper;
 
-  Db db;
-  if (shareDb) {
-    db = Transaction.current.db;
-  } else {
-    wrapper = await DbPool().obtain();
-    db = wrapper.wrapped;
-  }
-
-  final transaction = Transaction<R>(db, useTransaction: useTransaction);
-
-  return (Scope()..value(Transaction.transactionKey, transaction))
-      .run(() async {
-    try {
-      return await transaction.run(action);
-      // ignore: avoid_catches_without_on_clauses
-    } catch (e) {
-      if (wrapper != null) {
-        await DbPool().release(wrapper);
-      }
-      rethrow;
+  try {
+    Db db;
+    if (shareDb) {
+      db = Transaction.current.db;
+    } else {
+      wrapper = await DbPool().obtain();
+      db = wrapper.wrapped;
     }
-  });
+
+    final transaction = Transaction<R>(db, useTransaction: useTransaction);
+
+    return (Scope()..value(Transaction.transactionKey, transaction))
+        .run(() async => transaction.run(action));
+  } finally {
+    if (wrapper != null) {
+      await DbPool().release(wrapper);
+    }
+  }
 }
 
 enum TransactionNesting {
