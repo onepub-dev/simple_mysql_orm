@@ -46,14 +46,16 @@ void main() {
       ran = true;
     });
     expect(ran, isTrue);
+    await DbPool().close();
   });
 
   test('invalid nested transaction ...', () async {
-    expect(
+    await expectLater(
         () async => withTransaction(() async {
               await withTransaction(() async {});
             }),
         throwsA(isA<NestedTransactionException>()));
+    await DbPool().close();
   });
 
   test('nested with no nesting transaction ...', () async {
@@ -63,6 +65,7 @@ void main() {
       expect(Scope.hasScopeKey(Transaction.transactionKey), isTrue);
     }, nesting: TransactionNesting.nested);
     expect(ran, isTrue);
+    await DbPool().close();
   });
   test('valid nested transaction ...', () async {
     var ran = false;
@@ -75,6 +78,7 @@ void main() {
       }, nesting: TransactionNesting.nested);
     });
     expect(ran, isTrue);
+    await DbPool().close();
   });
 
   test('detached nested transaction ...', () async {
@@ -88,6 +92,7 @@ void main() {
       }, nesting: TransactionNesting.detached);
     });
     expect(ran, isTrue);
+    await DbPool().close();
   });
 
   test('!useTransaction ...', () async {
@@ -101,5 +106,6 @@ void main() {
       }, nesting: TransactionNesting.detached);
     }, useTransaction: false);
     expect(ran, isTrue);
+    await DbPool().close();
   });
 }

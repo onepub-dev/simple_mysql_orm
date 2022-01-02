@@ -17,8 +17,8 @@ class Builder<E> {
   Select<E>? _select;
   Delete<E>? _delete;
   Where<E>? _where;
-  final _whereExpressions = <WhereExpression>[];
-  OrderBy? _orderBy;
+  final _whereExpressions = <WhereExpression<E>>[];
+  OrderBy<E>? _orderBy;
 }
 
 class Where<E> {

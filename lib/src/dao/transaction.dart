@@ -125,11 +125,14 @@ class Transaction<R> {
   /// unique id used for debugging
   int id;
 
+  // ignore: strict_raw_type
   static Transaction get current {
+    // ignore: strict_raw_type
     Transaction transaction;
 
     try {
       transaction = use(transactionKey);
+      // ignore: strict_raw_type
     } on MissingDependencyException catch (_) {
       throw TransactionNotInScopeException();
     }
@@ -147,7 +150,9 @@ class Transaction<R> {
   bool _commited = false;
 
   @visibleForTesting
+  // ignore: strict_raw_type
   static final ScopeKey<Transaction> transactionKey =
+      // ignore: strict_raw_type
       ScopeKey<Transaction>('transaction');
 
   // Transaction get transaction => use(transactionKey);
