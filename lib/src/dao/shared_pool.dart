@@ -202,8 +202,16 @@ class SharedPool<T extends Transactionable> implements Pool<T> {
         // remove the bad connection
         _removeBadConnection(_conn);
         _conn = null;
+        lastError = e.toString();
+        if (e is MySqlException) {
+          /// no point retrying if its access denied.
+          if (e.message.contains('Access denied for user')) {
+            break;
+          } else {
+            await _logAndWait(lastError);
+          }
+        }
         if (e is StateError || e is MySqlException || e is SocketException) {
-          lastError = e.toString();
           await _logAndWait(lastError);
         } else {
           rethrow;
@@ -226,11 +234,11 @@ class SharedPool<T extends Transactionable> implements Pool<T> {
     for (final conn in _pool.keys) {
       if (_pool[conn] == true) {
         notReleased.add(conn.id);
-      }
-      if (conn.inTransaction) {
+      } else if (conn.inTransaction) {
         inTransaction.add(conn.id);
+      } else {
+        await conn.close();
       }
-      await conn.close();
     }
     var error = '';
 
