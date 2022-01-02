@@ -103,6 +103,7 @@ class DbPool {
   /// obtains a wrapper containg a [Db] connection
   Future<ConnectionWrapper<Db>> obtain() async => pool.obtain();
 
+  /// relase the given connection [wrapper] back into the pool.
   Future<void> release(ConnectionWrapper<Db> wrapper) async {
     await pool.release(wrapper);
   }
@@ -119,6 +120,8 @@ class DbPool {
       await release(wrapper);
     }
   }
+
+  Future<void> close() async => pool.close();
 }
 
 class MySqlConnectonManager implements ConnectionManager<Db> {

@@ -1,3 +1,5 @@
+@Timeout(Duration(minutes: 10))
+
 import 'package:dcli/dcli.dart';
 import 'package:logging/logging.dart';
 import 'package:simple_mysql_orm/simple_mysql_orm.dart';
@@ -31,6 +33,8 @@ void main() {
       print(db.wrapped.id);
     }
     expect(released, isTrue);
+
+    await pool.close();
   });
 
   test('db pool no wait', () async {
@@ -54,6 +58,8 @@ void main() {
 
     /// we should get here before release is called.
     expect(released, isFalse);
+
+    await pool.close();
   });
 
   test('db pool obtain/release', () async {
@@ -78,6 +84,8 @@ void main() {
 
     /// we should get here before release is called.
     expect(released, isFalse);
+
+    await pool.close();
   });
 
   test('db pool releaseExcess', () async {
@@ -109,5 +117,26 @@ void main() {
 
     /// we should get here before release is called.
     expect(released, isFalse);
+
+    await pool.close();
   });
+
+  /// TODO: add logic to this test to start/stop the mysql service
+  /// whilst this tests runs.
+  test('db pool reconnect', () async {
+    final pool = DbPool.fromSettings(
+        pathToSettings: join('test', 'settings.yaml'),
+        overrideMax: 3,
+        overrideMin: 1,
+        overrideExcessDuration: const Duration(seconds: 2));
+
+    for (var i = 0; i < 100; i++) {
+      // logger.info(() => 'obtaining connection')
+      final db = await pool.obtain();
+      await pool.release(db);
+      await Future.delayed(const Duration(seconds: 10), () => null);
+    }
+
+    await pool.close();
+  }, skip: true);
 }

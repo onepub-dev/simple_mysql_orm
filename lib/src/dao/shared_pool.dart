@@ -1,5 +1,7 @@
 import 'dart:async';
+import 'dart:io';
 
+import 'package:galileo_mysql/galileo_mysql.dart';
 import 'package:logging/logging.dart';
 import '../exceptions.dart';
 import 'db.dart';
@@ -20,7 +22,7 @@ import 'db.dart';
 ///              age INT);");
 ///       await conn.release();
 ///     }
-class SharedPool<T extends ID> implements Pool<T> {
+class SharedPool<T extends Transactionable> implements Pool<T> {
   SharedPool(
     this.manager, {
     required this.excessDuration,
@@ -87,7 +89,7 @@ class SharedPool<T extends ID> implements Pool<T> {
       return _allocate(_findUnusedConnection()!);
     }
 
-    return _allocate(await _createNew());
+    return _allocate(await _validConnection(null));
   }
 
   ConnectionWrapper<T>? _findUnusedConnection() {
@@ -149,22 +151,97 @@ class SharedPool<T extends ID> implements Pool<T> {
     }
   }
 
-  ConnectionWrapper<T> _allocate(ConnectionWrapper<T> conn) {
+  Future<ConnectionWrapper<T>> _allocate(ConnectionWrapper<T> conn) async {
     logger.info(() => 'obtained connection ${conn.wrapped.id}');
 
+    final _conn = await _validConnection(conn);
+
     /// mark it as inuse
-    _pool[conn] = true;
-    return conn;
+    _pool[_conn] = true;
+    return _conn;
   }
 
   void _deallocate(ConnectionWrapper<T> conn) {
     logger.info(() => 'released connection ${conn.wrapped.id}');
+
+    if (conn.wrapped.inTransaction) {
+      throw StateError('Attempted to release a connection ${conn.wrapped.id} '
+          'whilst a transaction was pending.');
+    }
     _pool[conn] = false;
+  }
+
+  /// Checks that the pass [conn] is still valid
+  /// and if not replaces it with a valid connection.
+  /// If a replacement connection can't be obtained
+  /// then an exception will be thrown.
+  Future<ConnectionWrapper<T>> _validConnection(
+      ConnectionWrapper<T>? conn) async {
+    var _conn = conn;
+    var retries = 30;
+    var success = false;
+
+    String? lastError;
+    while (!success && retries > 0) {
+      try {
+        if (_conn != null && await _conn.wrapped.test()) {
+          success = true;
+          break;
+        } else {
+          if (_conn != null) {
+            _removeBadConnection(_conn);
+            _conn = null;
+          }
+          retries--;
+          _conn = await _createNew();
+          success = true;
+          break;
+        }
+        // ignore: avoid_catches_without_on_clauses
+      } catch (e) {
+        // remove the bad connection
+        _removeBadConnection(_conn);
+        _conn = null;
+        if (e is StateError || e is MySqlException || e is SocketException) {
+          lastError = e.toString();
+          await _logAndWait(lastError);
+        } else {
+          rethrow;
+        }
+      }
+    }
+    if (!success) {
+      logger.severe('Unable to connect to db. $lastError');
+      throw MySqlORMException('Unable to connect to db. $lastError');
+    }
+
+    return _conn!;
+  }
+
+  Future<void> close() async {
+    for (final conn in _pool.keys) {
+      await conn.close();
+    }
+  }
+
+  Future<void> _logAndWait(String message) async {
+    logger.warning('Connection attempt failed: $message. '
+        'Retrying in 10 seconds');
+    // sleep 10 secondss
+    await Future.delayed(const Duration(seconds: 10), () => null);
+  }
+
+  void _removeBadConnection(ConnectionWrapper<T>? conn) {
+    if (conn != null) {
+      logger.info(() => 'Found bad connection: ${conn.id}. Replacing it.');
+      // remove the invalid connection
+      _pool.remove(conn);
+    }
   }
 }
 
 /// A connection
-class ConnectionWrapper<T> {
+class ConnectionWrapper<T extends Transactionable> {
   ConnectionWrapper._(this.pool, this._wrapped);
 
   /// Releases the connection
@@ -176,6 +253,10 @@ class ConnectionWrapper<T> {
   /// The underlying connection
   final T _wrapped;
 
+  bool get inTransaction => _wrapped.inTransaction;
+
+  int get id => _wrapped.id;
+
   /// Is this connection released to the pool?
   bool isReleased = false;
 
@@ -183,6 +264,8 @@ class ConnectionWrapper<T> {
 
   /// when this connection was last used.
   DateTime lastUsed = DateTime.now();
+
+  Future<void> close() async => _wrapped.close();
 }
 
 /// Interface to open and close the connection [C]
@@ -195,7 +278,7 @@ abstract class ConnectionManager<C> {
 }
 
 /// Interface for pool
-abstract class Pool<T> {
+abstract class Pool<T extends Transactionable> {
   /// Contains logic to open and close connections.
   ConnectionManager<T> get manager;
 

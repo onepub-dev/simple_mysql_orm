@@ -9,7 +9,7 @@ import '../model/entity.dart';
 
 int nextId = 0;
 
-class Db implements ID {
+class Db implements Transactionable {
   // factory Db() {
   //   if (_self == null) {
   //     throw StateError('You must initialise MySQLConnection first');
@@ -75,6 +75,9 @@ class Db implements ID {
     _connection = await g.MySqlConnection.connect(settings);
   }
 
+  @override
+  Future<void> close() async => _connection?.close();
+
   /// Query the db.
   /// The [query] to be run with the passed [values]
   ///
@@ -96,9 +99,18 @@ class Db implements ID {
     return value;
   }
 
-  Future<R> transaction<R>(Future<R> Function() action) async =>
+  @override
+  bool inTransaction = false;
+
+  Future<R> transaction<R>(Future<R> Function() action) async {
+    inTransaction = true;
+    try {
       // ignore: avoid_annotating_with_dynamic
-      await _connection!.transaction((dynamic context) => action()) as R;
+      return await _connection!.transaction((dynamic context) => action()) as R;
+    } finally {
+      inTransaction = false;
+    }
+  }
 
   Future<void> rollback() async {
     await query('rollback');
@@ -123,6 +135,20 @@ class Db implements ID {
     }
     return sb.toString();
   }
+
+  @override
+  Future<bool> test() async {
+    final results = await query('select 1');
+    if (results.length != 1) {
+      return false;
+    }
+
+    final values = results.single.values;
+    if (values == null || values.length != 1) {
+      return false;
+    }
+    return values[0] == 1;
+  }
 }
 
 class MySQLException implements Exception {
@@ -132,6 +158,13 @@ class MySQLException implements Exception {
   String toString() => message;
 }
 
-abstract class ID {
+abstract class Transactionable {
   int get id;
+  bool get inTransaction;
+
+  /// Test if the instance is still valid.
+  /// This should test the connection is still up.
+  Future<bool> test();
+
+  Future<void> close();
 }
