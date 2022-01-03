@@ -1,3 +1,6 @@
+import 'dart:developer';
+import 'dart:isolate';
+
 import 'package:di_zone2/di_zone2.dart';
 import 'package:logging/logging.dart';
 import 'package:meta/meta.dart';
@@ -163,8 +166,9 @@ class Transaction<R> {
   /// completes. So this option allows you to inspect the db
   /// as updates occur.
   Future<R?> run(Future<R> Function() action) async {
-    logger.info(() =>
-        'Start transaction($id db: ${db.id}): useTransaction: $useTransaction');
+    logger.info(() => 'Start transaction($id db: ${db.id} '
+        'isolate: ${Service.getIsolateID(Isolate.current)}): '
+        'useTransaction: $useTransaction');
     if (useTransaction) {
       /// run using a transaction
       final result = await db.transaction(() async => action());
