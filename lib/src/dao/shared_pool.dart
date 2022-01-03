@@ -154,10 +154,16 @@ class SharedPool<T extends Transactionable> implements Pool<T> {
   Future<ConnectionWrapper<T>> _allocate(ConnectionWrapper<T> conn) async {
     logger.info(() => 'obtained connection ${conn.wrapped.id}');
 
+    /// mark conn as in use before we call await so
+    /// that another async method can't obtain it.
+    _pool[conn] = true;
+
     final _conn = await _validConnection(conn);
 
-    /// mark it as inuse
+    // Mark the returned connection as in use as it
+    // may be different from the one we passed in.
     _pool[_conn] = true;
+
     return _conn;
   }
 
