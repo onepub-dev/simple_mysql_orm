@@ -34,15 +34,19 @@ abstract class Dao<E> {
   Future<List<E>> getListByField(String fieldName, String fieldValue) async =>
       query('select * from $_tablename where $fieldName = ?', [fieldValue]);
 
-  Future<E?> getByField(String fieldName, String fieldValue) async {
-    final rows = await getListByField(fieldName, fieldValue);
+  Future<E?> getByField(String fieldName, String fieldValue) async =>
+      getSingle(await getListByField(fieldName, fieldValue));
 
+  /// Expects [rows] to have zero or one elements.
+  /// Throws [TooManyResultsException] if more than one row exists.
+  /// Returns null if no rows exist.
+  Future<E?> getSingle(List<E> rows) async {
     if (rows.isEmpty) {
       return null;
     }
     if (rows.length != 1) {
-      throw TooManyResultsException(
-          'Multiple ${_tablename}s named $fieldName found.');
+      throw TooManyResultsException('Multiple rows from ${_tablename}s matched '
+          'when only one was expected.');
     }
     return rows.first;
   }
@@ -68,17 +72,8 @@ abstract class Dao<E> {
     return e;
   }
 
-  Future<E?> getById(int id) async {
-    final rows = await query('select * from $_tablename where id = ?', [id]);
-
-    // ignore: always_put_control_body_on_new_line
-    if (rows.isEmpty) return null;
-
-    if (rows.length != 1) {
-      throw TooManyResultsException('Multiple $_tablename with id=$id found.');
-    }
-    return rows.first;
-  }
+  Future<E?> getById(int id) async =>
+      getSingle(await query('select * from $_tablename where id = ?', [id]));
 
   Future<List<E>> getAll() async => query('select * from $_tablename', []);
 

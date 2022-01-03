@@ -5,6 +5,7 @@ class Row {
   Map<String, dynamic> fields;
 
   String fieldAsString(String name) => fields[name].toString();
+  String? fieldAsStringNullable(String name) => fields[name]?.toString();
 
   int fieldAsInt(String name) => fields[name] as int;
 
