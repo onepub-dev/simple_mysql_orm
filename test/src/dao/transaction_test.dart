@@ -1,3 +1,5 @@
+@Timeout(Duration(minutes: 3))
+
 import 'package:dcli/dcli.dart' hide equals;
 import 'package:di_zone2/di_zone2.dart';
 import 'package:logging/logging.dart';
@@ -58,6 +60,32 @@ void main() {
     await DbPool().close();
   });
 
+  test('multiple transactions - different db', () async {
+    final used = <int>[];
+
+    final a = Future.delayed(
+        const Duration(seconds: 1),
+        () => withTransaction<void>(() {
+              used.add(Transaction.current.db.id);
+              return Future.delayed(const Duration(seconds: 10));
+            }));
+    final b = Future.delayed(
+        const Duration(seconds: 1),
+        () => withTransaction<void>(() {
+              used.add(Transaction.current.db.id);
+              return Future.delayed(const Duration(seconds: 10));
+            }));
+
+    final c = Future.delayed(
+        const Duration(seconds: 1),
+        () => withTransaction<void>(() {
+              used.add(Transaction.current.db.id);
+              return Future.delayed(const Duration(seconds: 10));
+            }));
+
+    await Future.wait([a, b, c]);
+    expect(used, unorderedEquals(<int>[0, 1, 2]));
+  });
   test('transaction with result', () async {
     final count = await withTransaction<int>(() async => 1);
     expect(count, 1);
