@@ -41,8 +41,8 @@ class SharedPool<T extends Transactionable> implements Pool<T> {
     // we start in a state where we have connections available.
     available.complete(true);
 
-    // start delayed future to release excess connections.
-    _releaseExcess();
+    // start timer future to release excess connections.
+    _releaseTimer = Timer(excessDuration, _releaseExcess);
   }
   @override
   final ConnectionManager<T> manager;
@@ -52,6 +52,8 @@ class SharedPool<T extends Transactionable> implements Pool<T> {
   final int minSize;
   final int maxSize;
   final Duration excessDuration;
+
+  late Timer _releaseTimer;
 
   /// Used to track the set of connections and whether
   /// they are in use.
@@ -106,13 +108,13 @@ class SharedPool<T extends Transactionable> implements Pool<T> {
   /// We release one connection every minute provided
   /// it hasn't been used for at least a minute;
   void _releaseExcess() {
-    logger.info(() => 'releaseExcess called');
+    logger.fine(() => 'releaseExcess called');
     if (_pool.length > minSize) {
-      logger.info(() => 'Found potentional connections to release');
+      logger.fine(() => 'Found potentional connections to release');
       final oneMinuteAgo = DateTime.now().subtract(excessDuration);
       for (final conn in _pool.keys) {
         if (_pool[conn] == true) {
-          logger.info(() => 'connection ${conn.wrapped.id} in use');
+          logger.fine(() => 'connection ${conn.wrapped.id} in use');
 
           /// connection is in use.
           continue;
@@ -122,8 +124,8 @@ class SharedPool<T extends Transactionable> implements Pool<T> {
 
           try {
             manager.close(conn.wrapped);
-            logger.info(
-                () => 'removed from pool unused connection ${conn.wrapped.id}');
+            logger.info(() =>
+                'removed from pool unused connection: ${conn.wrapped.id}');
             // ignore: avoid_catches_without_on_clauses
           } catch (e, st) {
             logger.severe(() => 'Failed closing connection', e, st);
@@ -135,7 +137,8 @@ class SharedPool<T extends Transactionable> implements Pool<T> {
       }
     }
 
-    Future.delayed(excessDuration, _releaseExcess);
+    // restart the timer.
+    _releaseTimer = Timer(excessDuration, _releaseExcess);
   }
 
   /// Releases [connection] back to the pool
@@ -260,6 +263,8 @@ class SharedPool<T extends Transactionable> implements Pool<T> {
     if (error.isNotEmpty) {
       throw MySQLException(error);
     }
+
+    _releaseTimer.cancel();
   }
 
   Future<void> _logAndWait(String message) async {
