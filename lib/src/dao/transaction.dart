@@ -59,7 +59,8 @@ import 'shared_pool.dart';
 /// as updates occur.
 Future<R?> withTransaction<R>(Future<R> Function() action,
     {TransactionNesting nesting = TransactionNesting.notAllowed,
-    bool useTransaction = true}) async {
+    bool useTransaction = true,
+    String? debugName}) async {
   final nestedTransaction = Scope.hasScopeKey(Transaction.transactionKey);
 
   switch (nesting) {
@@ -69,21 +70,24 @@ Future<R?> withTransaction<R>(Future<R> Function() action,
             'Specify TransactionNesting.nestedTransaction');
       }
       return _runTransaction(action,
-          useTransaction: useTransaction, shareDb: false);
+          useTransaction: useTransaction, shareDb: false, debugName: debugName);
 
     case TransactionNesting.detached:
       return _runTransaction(action,
-          useTransaction: useTransaction, shareDb: false);
+          useTransaction: useTransaction, shareDb: false, debugName: debugName);
 
     case TransactionNesting.nested:
       return _runTransaction(action,
           useTransaction: useTransaction && !nestedTransaction,
-          shareDb: nestedTransaction);
+          shareDb: nestedTransaction,
+          debugName: debugName);
   }
 }
 
 Future<R?> _runTransaction<R>(Future<R> Function() action,
-    {required bool useTransaction, required bool shareDb}) async {
+    {required bool useTransaction,
+    required bool shareDb,
+    required String? debugName}) async {
   ConnectionWrapper<Db>? wrapper;
 
   try {
@@ -98,7 +102,7 @@ Future<R?> _runTransaction<R>(Future<R> Function() action,
     final transaction = Transaction<R>(db, useTransaction: useTransaction);
 
     return await (Scope()..value(Transaction.transactionKey, transaction))
-        .run(() async => transaction.run(action));
+        .run(() async => transaction.run(action, debugName: debugName));
   } finally {
     if (wrapper != null) {
       await DbPool().release(wrapper);
@@ -165,23 +169,27 @@ class Transaction<R> {
   /// as soon as the occur rather than only once the transaction
   /// completes. So this option allows you to inspect the db
   /// as updates occur.
-  Future<R?> run(Future<R> Function() action) async {
+  Future<R?> run(Future<R> Function() action,
+      {required String? debugName}) async {
     logger.info(() => 'Start transaction($id db: ${db.id} '
         'isolate: ${Service.getIsolateID(Isolate.current)}): '
-        'useTransaction: $useTransaction');
+        'useTransaction: $useTransaction '
+        'debugName: ${debugName ?? 'none'}');
     if (useTransaction) {
       /// run using a transaction
       final result = await db.transaction(() async => action());
       _commited = true;
       logger.info(() =>
-          'End transaction($id db: ${db.id}): useTransaction: $useTransaction');
+          'End transaction($id db: ${db.id}): useTransaction: $useTransaction '
+          'debugName: ${debugName ?? 'none'}');
       return result;
     } else {
       // run without a transaction
       final result = await action();
       _commited = true;
       logger.info(() =>
-          'End transaction($id db: ${db.id}): useTransaction: $useTransaction');
+          'End transaction($id db: ${db.id}): useTransaction: $useTransaction '
+          'debugName: ${debugName ?? 'none'}');
       return result;
     }
   }
