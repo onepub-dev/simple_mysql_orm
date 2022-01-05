@@ -78,6 +78,8 @@ class Db implements Transactionable {
   @override
   Future<void> close() async => _connection?.close();
 
+  static int queryCount = 0;
+
   /// Query the db.
   /// The [query] to be run with the passed [values]
   ///
@@ -87,8 +89,13 @@ class Db implements Transactionable {
   ///   where id = ?', [userId]);
   /// ```
   Future<g.Results> query(String query, [ValueList? values]) async {
-    logger.info(() => 'Db: $id $query, values:[${_expandValues(values)}]');
-    return connection.query(query, values);
+    logger.info(() =>
+        'Db: $id qid: $queryCount $query, values:[${_expandValues(values)}]');
+    final results = await connection.query(query, values);
+    logger.info(() => 'Db: $id qid: $queryCount '
+        'Affected rows: ${results.affectedRows ?? 0}');
+    queryCount++;
+    return results;
   }
 
   static String getEnv(String key, {String? defaultValue}) {
@@ -143,7 +150,7 @@ class Db implements Transactionable {
 
   @override
   Future<bool> test() async {
-    final results = await query('select 1');
+    final results = await query('select 1 as testprob');
     if (results.length != 1) {
       return false;
     }
