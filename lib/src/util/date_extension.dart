@@ -16,6 +16,8 @@ extension DateExtension on Date {
     return Date.from(format.parse(date));
   }
 
+  static Date now() => Date.from(DateTime.now());
+
   /// Parses a date based on the given [pattern]
   ///
   /// The [pattern] must confirm to the patterns accepted

@@ -5,12 +5,14 @@ repository: https://github.com/bsutton/simple_mysql_orm
 environment: 
   sdk: '>=2.15.0 <3.0.0'
 dependencies: 
+  date_time: ^0.4.5
   dcli_core: ^0.0.5
   di_zone2: ^1.0.2
   galileo_mysql: ^3.0.0
   intl: ^0.17.0
   logging: ^1.0.2
   meta: ^1.7.0
+  money2: ^3.1.2
   settings_yaml: ^3.3.1
 dev_dependencies: 
   dcli: ^1.15.5
