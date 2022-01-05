@@ -40,7 +40,7 @@ void main() {
       await dao.delete().where().eq('name', 'brett').run();
       final publisher = Publisher(name: 'brett', email: 'me@my.com');
       final identity = await dao.persist(publisher);
-      final inserted = await dao.getById(identity);
+      final inserted = await dao.tryById(identity);
 
       expect(inserted, isNotNull);
       expect(inserted!.name, equals('brett'));
