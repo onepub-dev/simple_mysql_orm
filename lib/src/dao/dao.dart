@@ -31,6 +31,31 @@ abstract class Dao<E> {
     return fromResults(results);
   }
 
+  /// use this to execute a query that returns a single row with
+  /// a single column
+  /// Its useful for 'sum' type queries.
+  /// The [fieldName] to extract from the query.
+  /// [values] to pass to the query
+  /// [convert] a function to convert the return value (as a string)
+  /// to [S].
+  Future<S?> querySingle<S>(String query, ValueList values, String fieldName,
+      S? Function(String value) convert) async {
+    final results = await db.query(query, values);
+    if (results.isEmpty) {
+      return null;
+    }
+
+    if (results.length != 1) {
+      throw TooManyResultsException('Multiple rows from ${query}s matched '
+          'when only one was expected.');
+    }
+
+    final row = results.first;
+
+    final value = convert(row.fields[fieldName] as String);
+    return value;
+  }
+
   Future<List<E>> getListByField(String fieldName, String fieldValue) async =>
       query('select * from $_tablename where $fieldName = ?', [fieldValue]);
 
@@ -64,15 +89,15 @@ abstract class Dao<E> {
     return getByField(fieldName, formatted);
   }
 
-  Future<E> getByIdExpected(int id) async {
-    final e = await getById(id);
+  Future<E> getById(int id) async {
+    final e = await tryById(id);
     if (e == null) {
       throw IntegrityException('Id $id not found in $_tablename');
     }
     return e;
   }
 
-  Future<E?> getById(int id) async =>
+  Future<E?> tryById(int id) async =>
       getSingle(await query('select * from $_tablename where id = ?', [id]));
 
   Future<List<E>> getAll() async => query('select * from $_tablename', []);
