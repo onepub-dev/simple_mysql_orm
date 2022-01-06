@@ -2,8 +2,8 @@ class TooManyResultsException extends MySqlORMException {
   TooManyResultsException(String message) : super(message);
 }
 
-class IntegrityException extends MySqlORMException {
-  IntegrityException(String message) : super(message);
+class UnknownEntityIdException extends MySqlORMException {
+  UnknownEntityIdException(String message) : super(message);
 }
 
 class NestedTransactionException extends MySqlORMException {
