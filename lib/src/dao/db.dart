@@ -3,6 +3,7 @@ import 'dart:math';
 
 import 'package:dcli_core/dcli_core.dart';
 import 'package:galileo_mysql/galileo_mysql.dart' as g;
+import 'package:galileo_mysql/galileo_mysql.dart';
 import 'package:logging/logging.dart';
 
 import '../model/entity.dart';
@@ -91,11 +92,24 @@ class Db implements Transactionable {
   Future<g.Results> query(String query, [ValueList? values]) async {
     logger.info(() =>
         'Db: $id qid: $queryCount $query, values:[${_expandValues(values)}]');
-    final results = await connection.query(query, values);
-    logger.info(() => 'Db: $id qid: $queryCount '
-        'Affected rows: ${results.affectedRows ?? 0}');
-    queryCount++;
-    return results;
+
+    try {
+      final results = await connection.query(query, values);
+      logger.info(() => 'Db: $id qid: $queryCount '
+          'Rows encountered: ${results.affectedRows ?? results.length}');
+      queryCount++;
+      return results;
+    } on MySqlException catch (e) {
+      /// We don't want to use the stack trace from the exception
+      /// as it is a useless async callback that does the results
+      /// processing and gives the user no context.
+      final stack = StackTrace.current;
+      logger.severe(
+        '''
+Db: $id qid: $queryCount $query, values:[${_expandValues(values)}]');
+Error: ${e.message}''', e.errorNumber);
+      Error.throwWithStackTrace(e, stack);
+    }
   }
 
   static String getEnv(String key, {String? defaultValue}) {
