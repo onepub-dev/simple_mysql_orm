@@ -26,9 +26,10 @@ abstract class Dao<E> {
   Select<E> select() => Builder<E>.withDb(db, this).select();
   Delete<E> delete() => Builder<E>.withDb(db, this).delete();
   Future<List<E>> query(String query, ValueList values) async {
-    final results = await db.query(query, values);
+      final results = await db.query(query, values);
 
-    return fromResults(results);
+      return fromResults(results);
+    
   }
 
   /// use this to execute a query that returns a single row with
@@ -60,12 +61,12 @@ abstract class Dao<E> {
       query('select * from $_tablename where $fieldName = ?', [fieldValue]);
 
   Future<E?> getByField(String fieldName, String fieldValue) async =>
-      getSingle(await getListByField(fieldName, fieldValue));
+      trySingle(await getListByField(fieldName, fieldValue));
 
   /// Expects [rows] to have zero or one elements.
   /// Throws [TooManyResultsException] if more than one row exists.
   /// Returns null if no rows exist.
-  Future<E?> getSingle(List<E> rows) async {
+  Future<E?> trySingle(List<E> rows) async {
     if (rows.isEmpty) {
       return null;
     }
@@ -92,13 +93,13 @@ abstract class Dao<E> {
   Future<E> getById(int id) async {
     final e = await tryById(id);
     if (e == null) {
-      throw IntegrityException('Id $id not found in $_tablename');
+      throw UnknownEntityIdException('Id $id not found in $_tablename');
     }
     return e;
   }
 
   Future<E?> tryById(int id) async =>
-      getSingle(await query('select * from $_tablename where id = ?', [id]));
+      trySingle(await query('select * from $_tablename where id = ?', [id]));
 
   Future<List<E>> getAll() async => query('select * from $_tablename', []);
 
@@ -161,7 +162,7 @@ abstract class Dao<E> {
       }
       // datetime
       else if (value is DateTime) {
-        convertedValues.add(DateFormat('yyyy-MM-dd hh:mm:ss').format(value));
+        convertedValues.add(DateFormat('yyyy-MM-dd HH:mm:ss').format(value));
       }
       // bool
       else if (value is bool) {

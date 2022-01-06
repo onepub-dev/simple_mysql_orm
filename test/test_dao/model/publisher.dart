@@ -6,9 +6,9 @@ class Publisher extends Entity<Publisher> {
       Publisher._internal(name: name, email: email, id: -1);
 
   factory Publisher.fromRow(Row row) {
-    final id = row.fieldAsInt('id');
-    final name = row.fieldAsString('name');
-    final email = row.fieldAsString('email');
+    final id = row.asInt('id');
+    final name = row.asString('name');
+    final email = row.asString('email');
 
     return Publisher._internal(name: name, email: email, id: id);
   }

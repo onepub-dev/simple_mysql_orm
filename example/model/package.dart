@@ -12,13 +12,13 @@ class Package extends Entity<Package> {
           downloads: 0);
 
   factory Package.fromRow(Row row) {
-    final id = row.fieldAsInt('id');
-    final name = row.fieldAsString('name');
-    final latestVersion = row.fieldAsString('latestVersion');
-    final private = row.fieldAsBool('private');
-    final createdAt = row.fieldAsDateTime('createdAt');
-    final updatedAt = row.fieldAsDateTime('updatedAt');
-    final downloads = row.fieldAsInt('downloads');
+    final id = row.asInt('id');
+    final name = row.asString('name');
+    final latestVersion = row.asString('latestVersion');
+    final private = row.asBool('private');
+    final createdAt = row.asDateTime('createdAt');
+    final updatedAt = row.asDateTime('updatedAt');
+    final downloads = row.asInt('downloads');
 
     return Package._internal(
         id: id,
