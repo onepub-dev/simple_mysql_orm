@@ -3,10 +3,10 @@ import 'package:simple_mysql_orm/src/dao/tenant.dart';
 import '../model/member.dart';
 
 class MemberDao extends DaoTenant<Member> {
-  MemberDao() : super(tableName: tablename, tenantColumnName: 'publisherId');
+  MemberDao() : super(tableName: tablename, tenantFieldName: 'publisherId');
 
   MemberDao.withDb(Db db)
-      : super.withDb(db, tableName: tablename, tenantColumnName: 'publisherId');
+      : super.withDb(db, tableName: tablename, tenantFieldName: 'publisherId');
 
   Future<Member?> getByName(String name) async {
     final row = await getByField('email', name);
