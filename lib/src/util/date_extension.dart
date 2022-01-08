@@ -38,5 +38,3 @@ extension DateExtension on Date {
     return result;
   }
 }
-
-

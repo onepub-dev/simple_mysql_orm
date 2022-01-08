@@ -53,8 +53,8 @@ class Db implements Transactionable {
   /// generates a unique id for each transaction for debugging purposes.
   /// If we are running in a [TransactionTestScope] then we use
   /// a sequence specific to that scope rather than a global sequence.
-  static int get _nextId => use(TransactionTestScope.dbTestIdKey,
-      withDefault: () => __nextId++);
+  static int get _nextId =>
+      use(TransactionTestScope.dbTestIdKey, withDefault: () => __nextId++);
 
   /// Unique id used in logging to identify which [Db] conection
   /// was used to execute a query.

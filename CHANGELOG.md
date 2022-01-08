@@ -1,3 +1,22 @@
+# 1.4.0
+- Added support for mulit-tenancy.
+- Improved the exception handling and logging when a mysqlexception is throw. We now (mostly) throw a coherent stack trace.
+- added the date_time class and created exensions for same. 
+- Breaking: moved to the 2.16 beta so we could generated co-herent stack traces when mysql exceptions are thrown.
+- Breaking: renamed the fieldAsXX methods to asXX. Introduced tryAsXX method that can return a null replacing any of the fieldAsXXNulllable methods.
+- Added methods tryByXX  which returns a null type.
+- Added querySingle so you can get a single row with a single value returned. handy for sum type queries.
+- Added the date_time package so we can support Date and Time files (as apposed to DateTime). Also added Money2 so we can store/retrieve monetary amounts.
+- Added addtional field conversions.
+- Added a query count to make it easier to associated log statements for the same query
+- Added a 'debugName' to withTransaction.
+- Fixed a bug where the excess connection future wasn't been shutdown which stop applications for exiting. We now use  a timer and cancel it when DbPool.close() is called.
+- Added an extension class to the Date class to add in parsing.
+- added getSingle and fieldAsStringNullable
+- added test to confirm that the same db can't be allocated when transations overlap.
+- fixed bug where a window existed during allocate where the same connection could be allocated twice.
+- add isolate to log statement.
+
 # 1.3.2
 - modified withTransaction to allow the return of a nullable value
 
