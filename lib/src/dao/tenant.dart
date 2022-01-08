@@ -8,13 +8,10 @@ import '../../simple_mysql_orm.dart';
 /// To setup a multi-tenant system you must
 /// Runs [action] with all db access scoped to only those records
 /// owned by the tenant.
-void withTenant({required int tenantId, required void Function() action}) {
-  Scope('withTenant')
-    ..value<int>(Tenant.tenantIdKey, tenantId)
-    ..run(() {
-      action();
-    });
-}
+Future<T> withTenant<T>(
+        {required int tenantId, required Future<T> Function() action}) async =>
+    await (Scope('withTenant')..value<int>(Tenant.tenantIdKey, tenantId))
+        .run(() async => action());
 
 /// Allows a DaoTenant to access the db withouth passing in a tenant id.
 /// Use this method with CARE.
