@@ -1,4 +1,4 @@
-# 1.4.0
+# 1.4.0-beta.1
 - Added support for mulit-tenancy.
 - Improved the exception handling and logging when a mysqlexception is throw. We now (mostly) throw a coherent stack trace.
 - added the date_time class and created exensions for same. 
