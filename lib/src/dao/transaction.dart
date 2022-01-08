@@ -1,9 +1,9 @@
 import 'dart:developer';
 import 'dart:isolate';
 
-import 'package:di_zone2/di_zone2.dart';
 import 'package:logging/logging.dart';
 import 'package:meta/meta.dart';
+import 'package:scope/scope.dart';
 
 import '../exceptions.dart';
 import 'db.dart';
@@ -101,7 +101,8 @@ Future<R?> _runTransaction<R>(Future<R> Function() action,
 
     final transaction = Transaction<R>(db, useTransaction: useTransaction);
 
-    return await (Scope()..value(Transaction.transactionKey, transaction))
+    return await (Scope('runTransaction')
+          ..value(Transaction.transactionKey, transaction))
         .run(() async => transaction.run(action, debugName: debugName));
   } finally {
     if (wrapper != null) {
@@ -116,18 +117,42 @@ enum TransactionNesting {
   notAllowed,
 }
 
+/// Use the [TransactionTestScope]
+class TransactionTestScope {
+  TransactionTestScope();
+
+  int nextTransactionId = 0;
+  int nextDbId = 0;
+
+  static ScopeKey<int> transactionTestIdKey =
+      ScopeKey<int>('transactionTestId');
+  static ScopeKey<int> dbTestIdKey = ScopeKey<int>('dbTestId');
+
+  Future<R> run<R>(Future<R> Function() action) =>
+      (Scope('TransactionTestScope')
+            ..sequence<int>(transactionTestIdKey, () => nextTransactionId++)
+            ..sequence<int>(dbTestIdKey, () => nextDbId++))
+          .run(() => action());
+}
+
 class Transaction<R> {
   /// Create a database transaction for [db].
   ///
   /// If [useTransaction] is false the transation
   /// isn't created. This should only be used for debugging.
-  Transaction(this.db, {required this.useTransaction}) : id = nextId++ {
+  Transaction(this.db, {required this.useTransaction}) : id = _nextId {
     // _begin();
   }
 
   final logger = Logger('Transaction');
 
-  static int nextId = 0;
+  static int __nextId = 0;
+
+  /// generates a unique id for each transaction for debugging purposes.
+  /// If we are running in a [TransactionTestScope] then we use
+  /// a sequence specific to that scope rather than a global sequence.
+  static int get _nextId => use(TransactionTestScope.transactionTestIdKey,
+      withDefault: () => __nextId++);
 
   /// unique id used for debugging
   int id;

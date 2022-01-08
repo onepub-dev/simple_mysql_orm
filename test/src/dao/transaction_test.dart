@@ -1,12 +1,11 @@
 @Timeout(Duration(minutes: 3))
-
 import 'package:dcli/dcli.dart' hide equals;
-import 'package:di_zone2/di_zone2.dart';
 import 'package:logging/logging.dart';
+import 'package:scope/scope.dart';
 import 'package:simple_mysql_orm/simple_mysql_orm.dart';
 import 'package:test/test.dart';
 
-import '../../test_dao/dao/uploader_dao.dart';
+import '../../test_dao/dao/dao_publisher.dart';
 import '../../test_dao/model/publisher.dart';
 
 final settingsPath = join('test', 'settings.yaml');
@@ -38,13 +37,13 @@ void main() {
       expect(db, isNotNull);
       final dao = PublisherDao();
       await dao.delete().where().eq('name', 'brett').run();
-      final publisher = Publisher(name: 'brett', email: 'me@my.com');
+      final publisher = Publisher(name: 'brett', contactEmail: 'member@me.com');
       final identity = await dao.persist(publisher);
       final inserted = await dao.tryById(identity);
 
       expect(inserted, isNotNull);
       expect(inserted!.name, equals('brett'));
-      expect(inserted.email, equals('me@my.com'));
+      expect(inserted.contactEmail, equals('member@me.com'));
       ran = true;
     });
     expect(ran, isTrue);
@@ -63,28 +62,30 @@ void main() {
   test('multiple transactions - different db', () async {
     final used = <int>[];
 
-    final a = Future.delayed(
-        const Duration(seconds: 1),
-        () => withTransaction<void>(() {
-              used.add(Transaction.current.db.id);
-              return Future.delayed(const Duration(seconds: 10));
-            }));
-    final b = Future.delayed(
-        const Duration(seconds: 1),
-        () => withTransaction<void>(() {
-              used.add(Transaction.current.db.id);
-              return Future.delayed(const Duration(seconds: 10));
-            }));
+    await TransactionTestScope().run(() async {
+      final a = Future.delayed(
+          const Duration(seconds: 1),
+          () => withTransaction<void>(() {
+                used.add(Transaction.current.db.id);
+                return Future.delayed(const Duration(seconds: 10));
+              }));
+      final b = Future.delayed(
+          const Duration(seconds: 1),
+          () => withTransaction<void>(() {
+                used.add(Transaction.current.db.id);
+                return Future.delayed(const Duration(seconds: 10));
+              }));
 
-    final c = Future.delayed(
-        const Duration(seconds: 1),
-        () => withTransaction<void>(() {
-              used.add(Transaction.current.db.id);
-              return Future.delayed(const Duration(seconds: 10));
-            }));
+      final c = Future.delayed(
+          const Duration(seconds: 1),
+          () => withTransaction<void>(() {
+                used.add(Transaction.current.db.id);
+                return Future.delayed(const Duration(seconds: 10));
+              }));
 
-    await Future.wait([a, b, c]);
-    expect(used, unorderedEquals(<int>[0, 1, 2]));
+      await Future.wait([a, b, c]);
+      expect(used, unorderedEquals(<int>[0, 1, 2]));
+    });
   });
   test('transaction with result', () async {
     final count = await withTransaction<int>(() async => 1);

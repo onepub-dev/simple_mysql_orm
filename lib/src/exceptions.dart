@@ -14,7 +14,14 @@ class ConfigurationException extends MySqlORMException {
   ConfigurationException(String message) : super(message);
 }
 
+class MissingTenantException extends MySqlORMException {
+  MissingTenantException(String message) : super(message);
+}
+
 class MySqlORMException implements Exception {
   MySqlORMException(this.message);
   String message;
+
+  @override
+  String toString() => message;
 }

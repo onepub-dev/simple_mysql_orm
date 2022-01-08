@@ -8,28 +8,40 @@ import '../exceptions.dart';
 import '../model/entity.dart';
 import 'db.dart';
 import 'row.dart';
+import 'tenant.dart';
 import 'transaction.dart';
 
 abstract class Dao<E> {
   /// Create a dao object taking the Database from
   /// the in scope [Transaction]
-  Dao(this._tablename) : db = Transaction.current.db;
+  Dao(this._tablename, {this.tenantFieldName}) : db = Transaction.current.db;
 
   /// Create a dao object with passed [db]
-  Dao.withDb(this.db, this._tablename);
+  Dao.withDb(this.db, this._tablename, {this.tenantFieldName});
 
   Db db;
   final String _tablename;
+
+  bool get _hasTenant => Tenant.hasTenant;
+  String? tenantFieldName;
+  int get _tenantId => Tenant.tenantId;
 
   E fromRow(Row row);
 
   Select<E> select() => Builder<E>.withDb(db, this).select();
   Delete<E> delete() => Builder<E>.withDb(db, this).delete();
-  Future<List<E>> query(String query, ValueList values) async {
-      final results = await db.query(query, values);
 
-      return fromResults(results);
-    
+  /// Allows you to write a custom query against the db.
+  ///
+  /// If you are using multi-tenanting then you MUST be certain
+  /// to filter by the tenant id as we are unable to inject the
+  /// tenant id.
+  Future<List<E>> query(String query, ValueList values) async {
+    Tenant.validate(this, query);
+
+    final results = await db.query(query, values);
+
+    return fromResults(results);
   }
 
   /// use this to execute a query that returns a single row with
@@ -39,8 +51,14 @@ abstract class Dao<E> {
   /// [values] to pass to the query
   /// [convert] a function to convert the return value (as a string)
   /// to [S].
+  ///
+  /// If you are using multi-tenanting then you MUST be certain
+  /// to filter by the tenant id as we are unable to inject the
+  /// tenant id.
   Future<S?> querySingle<S>(String query, ValueList values, String fieldName,
       S? Function(String value) convert) async {
+    Tenant.validate(this, query);
+
     final results = await db.query(query, values);
     if (results.isEmpty) {
       return null;
@@ -57,8 +75,19 @@ abstract class Dao<E> {
     return value;
   }
 
-  Future<List<E>> getListByField(String fieldName, String fieldValue) async =>
-      query('select * from $_tablename where $fieldName = ?', [fieldValue]);
+  String appendTenantClause(String sql) {
+    var _sql = sql;
+    if (Tenant.hasTenant) {
+      _sql += ' and `$_tablename.$tenantFieldName`=?';
+    }
+    return _sql;
+  }
+
+  Future<List<E>> getListByField(String fieldName, String fieldValue) async {
+    final sql = 'select * from $_tablename where `$fieldName` = ?';
+
+    return query(sql, [fieldValue]);
+  }
 
   Future<E?> getByField(String fieldName, String fieldValue) async =>
       trySingle(await getListByField(fieldName, fieldValue));
@@ -98,10 +127,17 @@ abstract class Dao<E> {
     return e;
   }
 
-  Future<E?> tryById(int id) async =>
-      trySingle(await query('select * from $_tablename where id = ?', [id]));
+  Future<E?> tryById(int id) async {
+    var sql = 'select * from $_tablename where id = ?';
+    sql = appendTenantClause(sql);
+    return trySingle(await query(sql, [id]));
+  }
 
-  Future<List<E>> getAll() async => query('select * from $_tablename', []);
+  Future<List<E>> getAll() async {
+    var sql = 'select * from $_tablename';
+    sql = appendTenantClause(sql);
+    return query(sql, []);
+  }
 
   List<E> fromResults(Results results) {
     final rows = <E>[];
@@ -117,6 +153,11 @@ abstract class Dao<E> {
     final fields = entity.fields;
     final values = convertToDb(entity.values);
 
+    if (Tenant.hasTenant) {
+      fields.add(Tenant.tenantFieldName);
+      values.add('$_tenantId');
+    }
+
     final placeHolders = '${'?, ' * (fields.length - 1)}?';
 
     final sql = 'insert into $_tablename '
@@ -131,23 +172,39 @@ abstract class Dao<E> {
     final fields = entity.fields;
     final values = convertToDb(entity.values);
 
-    final sql = 'update $_tablename '
+    var sql = 'update $_tablename '
         'set `${fields.join("`=?, `")}`=? '
         'where id=?';
 
-    await db.query(sql, [...values, entity.id]);
+    sql = appendTenantClause(sql);
+
+    await query(sql, [
+      ...values,
+      entity.id,
+      if (_hasTenant) _tenantId,
+    ]);
   }
 
   Future<void> remove(Entity<E> entity) async {
-    final sql = 'delete from $_tablename where id = ?';
+    var sql = 'delete from $_tablename where id = ?';
 
-    await db.query(sql, [entity.id]);
+    sql = appendTenantClause(sql);
+
+    await query(sql, [
+      entity.id,
+      if (_hasTenant) _tenantId,
+    ]);
   }
 
   Future<void> deleteById(int id) async {
-    final sql = 'delete from $_tablename where id = ?';
+    var sql = 'delete from $_tablename where id = ?';
 
-    await db.query(sql, [id]);
+    sql = appendTenantClause(sql);
+
+    await query(sql, [
+      id,
+      if (_hasTenant) _tenantId,
+    ]);
   }
 
   String getTablename() => _tablename;

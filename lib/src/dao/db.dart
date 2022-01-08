@@ -5,10 +5,9 @@ import 'package:dcli_core/dcli_core.dart';
 import 'package:galileo_mysql/galileo_mysql.dart' as g;
 import 'package:galileo_mysql/galileo_mysql.dart';
 import 'package:logging/logging.dart';
+import 'package:scope/scope.dart';
 
-import '../model/entity.dart';
-
-int nextId = 0;
+import '../../simple_mysql_orm.dart';
 
 class Db implements Transactionable {
   // factory Db() {
@@ -43,11 +42,19 @@ class Db implements Transactionable {
     required String password,
     required String database,
   }) {
-    id = nextId++;
+    id = _nextId;
     settings = g.ConnectionSettings(
         host: host, port: port, user: user, password: password, db: database);
   }
   final logger = Logger('Db');
+
+  static int __nextId = 0;
+
+  /// generates a unique id for each transaction for debugging purposes.
+  /// If we are running in a [TransactionTestScope] then we use
+  /// a sequence specific to that scope rather than a global sequence.
+  static int get _nextId => use(TransactionTestScope.dbTestIdKey,
+      withDefault: () => __nextId++);
 
   /// Unique id used in logging to identify which [Db] conection
   /// was used to execute a query.
@@ -104,8 +111,7 @@ class Db implements Transactionable {
       /// as it is a useless async callback that does the results
       /// processing and gives the user no context.
       final stack = StackTrace.current;
-      logger.severe(
-        '''
+      logger.severe('''
 Db: $id qid: $queryCount $query, values:[${_expandValues(values)}]');
 Error: ${e.message}''', e.errorNumber);
       Error.throwWithStackTrace(e, stack);
