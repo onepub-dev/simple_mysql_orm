@@ -1,3 +1,6 @@
+# 2.0.1
+- A number of multi-tenant fixes.
+
 # 2.0.0
 
 # 1.4.0-beta.2
