@@ -1,3 +1,5 @@
+# 2.0.0
+
 # 1.4.0-beta.2
 - reworked tenant implementation to simplify the UI. updated the readme to include doco on tenants.
 - additional unit tests.
