@@ -33,12 +33,23 @@ abstract class DaoTenant<E extends EntityTenant<E>> extends Dao<E> {
     } else {
       sql += 'where `$fieldName` = ? ';
     }
+
+    return query(appendTenantWhere(sql), appendTenantValue(values));
+  }
+
+  String appendTenantWhere(String sql) {
+    var _sql = sql;
     if (Tenant.inTenantScope) {
-      sql += ' and `${getTablename()}`.`$tenantFieldName`=? ';
+      _sql += ' and `${getTablename()}`.`$tenantFieldName`=? ';
+    }
+    return _sql;
+  }
+
+  ValueList appendTenantValue(List<String> values) {
+    if (Tenant.inTenantScope) {
       values.add('${Tenant.tenantId}');
     }
-
-    return query(sql, values);
+    return values;
   }
 
   @override
