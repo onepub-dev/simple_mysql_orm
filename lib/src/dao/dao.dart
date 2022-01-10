@@ -184,6 +184,10 @@ abstract class Dao<E> {
   }
 
   Future<void> update(Entity<E> entity) async {
+    if (entity.id == Entity.notSet) {
+      throw IdentityNotSetException('id not set on $_tablename during update. '
+          'Did you forget to retrieve the new entity after calling persist?');
+    }
     final fields = entity.fields;
     final values = convertToDb(entity.values);
 
