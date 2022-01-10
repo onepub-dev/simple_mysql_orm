@@ -1,7 +1,9 @@
 import 'dart:async';
 import 'dart:math';
 
-import 'package:dcli_core/dcli_core.dart';
+import 'package:collection/collection.dart';
+import 'package:dcli/dcli.dart';
+
 import 'package:galileo_mysql/galileo_mysql.dart' as g;
 import 'package:galileo_mysql/galileo_mysql.dart';
 import 'package:logging/logging.dart';
@@ -97,8 +99,8 @@ class Db implements Transactionable {
   ///   where id = ?', [userId]);
   /// ```
   Future<g.Results> query(String query, [ValueList? values]) async {
-    logger.info(() =>
-        'Db: $id qid: $queryCount $query, values:[${_expandValues(values)}]');
+    logger.info(() => 'Db: $id qid: $queryCount ${_colour(query)}, '
+        'values:[${_expandValues(values)}]');
 
     try {
       final results = await connection.query(query, values);
@@ -112,7 +114,7 @@ class Db implements Transactionable {
       /// processing and gives the user no context.
       final stack = StackTrace.current;
       logger.severe('''
-Db: $id qid: $queryCount $query, values:[${_expandValues(values)}]');
+Db: $id qid: $queryCount ${_colour(query)}, values:[${_expandValues(values)}]');
 Error: ${e.message}''', e.errorNumber);
       Error.throwWithStackTrace(e, stack);
     }
@@ -180,6 +182,24 @@ Error: ${e.message}''', e.errorNumber);
       return false;
     }
     return values[0] == 1;
+  }
+
+  String _colour(String query) {
+    final firstWord = query.split(' ').firstOrNull;
+    if (firstWord != null) {
+      switch (firstWord) {
+        case 'select':
+          return green(query);
+        case 'insert':
+          return magenta(query);
+        case 'update':
+          return orange(query);
+
+        case 'delete':
+          return red(query);
+      }
+    }
+    return query;
   }
 }
 
