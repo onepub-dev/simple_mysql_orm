@@ -23,7 +23,7 @@ class Select<E> {
 
       if (dao is DaoTenant && !Tenant.inTenantBypassScope) {
         sql.write('and `${dao.getTablename()}`. '
-            '`${(dao as DaoTenant).tenantFieldName}` = ?');
+            '`${(dao as DaoTenant).tenantFieldName}` = ? ');
         values.add(Tenant.tenantId);
       }
     }

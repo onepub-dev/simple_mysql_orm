@@ -80,14 +80,22 @@ abstract class Dao<E> {
     return value;
   }
 
-  Future<List<E>> getListByField(String fieldName, String fieldValue) async {
-    final sql = 'select * from $_tablename where `$fieldName` = ?';
+  Future<List<E>> getListByField(String fieldName, String fieldValue,
+      {bool like = false}) async {
+    var sql = 'select * from $_tablename ';
+    if (like) {
+      sql += 'where `$fieldName` like ?';
+    } else {
+      sql += 'where `$fieldName` = ?';
+    }
 
     return query(sql, [fieldValue]);
   }
 
-  Future<E> getByField(String fieldName, String fieldValue) async {
-    final entity = await trySingle(await getListByField(fieldName, fieldValue));
+  Future<E> getByField(String fieldName, String fieldValue,
+      {bool like = false}) async {
+    final entity = await trySingle(
+        await getListByField(fieldName, fieldValue, like: like));
     if (entity == null) {
       throw DatabaseIntegrityException('Failed to retrieve '
           '$fieldName=$fieldValue from '
@@ -96,8 +104,9 @@ abstract class Dao<E> {
     return entity;
   }
 
-  Future<E?> tryByField(String fieldName, String fieldValue) async =>
-      trySingle(await getListByField(fieldName, fieldValue));
+  Future<E?> tryByField(String fieldName, String fieldValue,
+          {bool like = false}) async =>
+      trySingle(await getListByField(fieldName, fieldValue, like: like));
 
   /// Expects [rows] to have zero or one elements.
   /// Throws [TooManyResultsException] if more than one row exists.
@@ -198,7 +207,7 @@ abstract class Dao<E> {
     await query(sql, values);
   }
 
-  Future<void> deleteById(int id) async {
+  Future<void> removeById(int id) async {
     var sql = 'delete from $_tablename where id = ?';
 
     final values = <String>['$id'];

@@ -22,11 +22,23 @@ abstract class DaoTenant<E extends EntityTenant<E>> extends Dao<E> {
   }
 
   @override
-  Future<List<E>> getListByField(String fieldName, String fieldValue) async {
-    final sql = 'select * from ${getTablename()} where `$fieldName` = ? '
-        ' and `${getTablename()}`.`$tenantFieldName`=? ';
+  Future<List<E>> getListByField(String fieldName, String fieldValue,
+      {bool like = false}) async {
+    var sql = 'select * from ${getTablename()} ';
 
-    return query(sql, [fieldValue, Tenant.tenantId]);
+    final values = [fieldValue];
+
+    if (like) {
+      sql += 'where `$fieldName` like ? ';
+    } else {
+      sql += 'where `$fieldName` = ? ';
+    }
+    if (Tenant.inTenantScope) {
+      sql += ' and `${getTablename()}`.`$tenantFieldName`=? ';
+      values.add('${Tenant.tenantId}');
+    }
+
+    return query(sql, values);
   }
 
   @override

@@ -57,7 +57,7 @@ import 'shared_pool.dart';
 /// as soon as the occur rather than only once the transaction
 /// completes. So this option allows you to inspect the db
 /// as updates occur.
-Future<R?> withTransaction<R>(Future<R> Function() action,
+Future<R> withTransaction<R>(Future<R> Function() action,
     {TransactionNesting nesting = TransactionNesting.notAllowed,
     bool useTransaction = true,
     String? debugName}) async {
@@ -84,7 +84,7 @@ Future<R?> withTransaction<R>(Future<R> Function() action,
   }
 }
 
-Future<R?> _runTransaction<R>(Future<R> Function() action,
+Future<R> _runTransaction<R>(Future<R> Function() action,
     {required bool useTransaction,
     required bool shareDb,
     required String? debugName}) async {
@@ -194,7 +194,7 @@ class Transaction<R> {
   /// as soon as the occur rather than only once the transaction
   /// completes. So this option allows you to inspect the db
   /// as updates occur.
-  Future<R?> run(Future<R> Function() action,
+  Future<R> run(Future<R> Function() action,
       {required String? debugName}) async {
     logger.info(() => 'Start transaction($id db: ${db.id} '
         'isolate: ${Service.getIsolateID(Isolate.current)}): '

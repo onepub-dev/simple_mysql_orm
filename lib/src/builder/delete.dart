@@ -15,11 +15,17 @@ class Delete<E> {
 
     if (_builder._where != null) {
       sql.write('where ');
-    }
 
-    for (final exp in _builder._whereExpressions) {
-      values.addAll(exp._values);
-      sql.write('$exp ');
+      for (final exp in _builder._whereExpressions) {
+        values.addAll(exp._values);
+        sql.write('$exp ');
+      }
+
+      if (dao is DaoTenant && !Tenant.inTenantBypassScope) {
+        sql.write('and `${dao.getTablename()}`. '
+            '`${(dao as DaoTenant).tenantFieldName}` = ? ');
+        values.add(Tenant.tenantId);
+      }
     }
 
     if (_builder._orderBy != null) {
