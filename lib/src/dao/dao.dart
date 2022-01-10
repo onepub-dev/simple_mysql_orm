@@ -1,32 +1,37 @@
+// ignore_for_file: avoid_dynamic_calls
+
 import 'dart:convert';
 
+import 'package:date_time/date_time.dart';
 import 'package:galileo_mysql/galileo_mysql.dart' hide MySqlConnection;
 import 'package:intl/intl.dart';
+import 'package:meta/meta.dart';
 
 import '../builder/builder.dart';
 import '../exceptions.dart';
 import '../model/entity.dart';
+import 'dao_tenant.dart';
 import 'db.dart';
 import 'row.dart';
-import 'tenant.dart';
 import 'transaction.dart';
 
 abstract class Dao<E> {
   /// Create a dao object taking the Database from
   /// the in scope [Transaction]
-  Dao(this._tablename, {this.tenantFieldName}) : db = Transaction.current.db;
+  Dao(this._tablename) : db = Transaction.current.db;
 
   /// Create a dao object with passed [db]
-  Dao.withDb(this.db, this._tablename, {this.tenantFieldName});
+  Dao.withDb(this.db, this._tablename);
 
   Db db;
   final String _tablename;
 
-  bool get _hasTenant => Tenant.hasTenant;
-  String? tenantFieldName;
-  int get _tenantId => Tenant.tenantId;
-
   E fromRow(Row row);
+
+  @protected
+
+  /// Used by DaoTenant to inject the tenant id
+  E callFromRow(Row row) => fromRow(row);
 
   Select<E> select() => Builder<E>.withDb(db, this).select();
   Delete<E> delete() => Builder<E>.withDb(db, this).delete();
@@ -37,7 +42,7 @@ abstract class Dao<E> {
   /// to filter by the tenant id as we are unable to inject the
   /// tenant id.
   Future<List<E>> query(String query, ValueList values) async {
-    Tenant.validate(this, query);
+    validate(query);
 
     final results = await db.query(query, values);
 
@@ -57,7 +62,7 @@ abstract class Dao<E> {
   /// tenant id.
   Future<S?> querySingle<S>(String query, ValueList values, String fieldName,
       S? Function(String value) convert) async {
-    Tenant.validate(this, query);
+    validate(query);
 
     final results = await db.query(query, values);
     if (results.isEmpty) {
@@ -75,21 +80,23 @@ abstract class Dao<E> {
     return value;
   }
 
-  String appendTenantClause(String sql) {
-    var _sql = sql;
-    if (Tenant.hasTenant) {
-      _sql += ' and `$_tablename.$tenantFieldName`=?';
-    }
-    return _sql;
-  }
-
   Future<List<E>> getListByField(String fieldName, String fieldValue) async {
     final sql = 'select * from $_tablename where `$fieldName` = ?';
 
     return query(sql, [fieldValue]);
   }
 
-  Future<E?> getByField(String fieldName, String fieldValue) async =>
+  Future<E> getByField(String fieldName, String fieldValue) async {
+    final entity = await trySingle(await getListByField(fieldName, fieldValue));
+    if (entity == null) {
+      throw DatabaseIntegrityException('Failed to retrieve '
+          '$fieldName=$fieldValue from '
+          '$_tablename when it was expected to exist');
+    }
+    return entity;
+  }
+
+  Future<E?> tryByField(String fieldName, String fieldValue) async =>
       trySingle(await getListByField(fieldName, fieldValue));
 
   /// Expects [rows] to have zero or one elements.
@@ -110,13 +117,13 @@ abstract class Dao<E> {
       getListByField(fieldName, '$fieldValue');
 
   Future<E?> getByFieldInt(String fieldName, int fieldValue) async =>
-      getByField(fieldName, '$fieldValue');
+      tryByField(fieldName, '$fieldValue');
 
   Future<E?> getByFieldDate(String fieldName, DateTime fieldValue) async {
     final formatter = DateFormat('yyyy-MM-dd');
     final formatted = formatter.format(fieldValue);
 
-    return getByField(fieldName, formatted);
+    return tryByField(fieldName, formatted);
   }
 
   Future<E> getById(int id) async {
@@ -129,34 +136,33 @@ abstract class Dao<E> {
 
   Future<E?> tryById(int id) async {
     var sql = 'select * from $_tablename where id = ?';
-    sql = appendTenantClause(sql);
-    return trySingle(await query(sql, [id]));
+    final values = ['$id'];
+    sql = appendTenantClause(sql, values);
+    return trySingle(await query(sql, values));
   }
 
   Future<List<E>> getAll() async {
     var sql = 'select * from $_tablename';
-    sql = appendTenantClause(sql);
-    return query(sql, []);
+    final values = <String>[];
+    sql = appendTenantClause(sql, values);
+    return query(sql, values);
   }
 
   List<E> fromResults(Results results) {
     final rows = <E>[];
     for (final results in results) {
-      rows.add(fromRow(Row(results.fields)));
+      rows.add(callFromRow(Row(results.fields)));
     }
     return rows;
   }
 
-  Iterable<E> fromRows(List<Row> rows) => rows.map(fromRow);
+  Iterable<E> fromRows(List<Row> rows) => rows.map(callFromRow);
 
   Future<int> persist(Entity<E> entity) async {
     final fields = entity.fields;
     final values = convertToDb(entity.values);
 
-    if (Tenant.hasTenant) {
-      fields.add(Tenant.tenantFieldName);
-      values.add('$_tenantId');
-    }
+    prepareInsert(fields, values);
 
     final placeHolders = '${'?, ' * (fields.length - 1)}?';
 
@@ -176,35 +182,30 @@ abstract class Dao<E> {
         'set `${fields.join("`=?, `")}`=? '
         'where id=?';
 
-    sql = appendTenantClause(sql);
+    values.add('${entity.id}');
 
-    await query(sql, [
-      ...values,
-      entity.id,
-      if (_hasTenant) _tenantId,
-    ]);
+    sql = appendTenantClause(sql, values);
+
+    await query(sql, values);
   }
 
   Future<void> remove(Entity<E> entity) async {
     var sql = 'delete from $_tablename where id = ?';
 
-    sql = appendTenantClause(sql);
+    final values = <String>['${entity.id}'];
+    sql = appendTenantClause(sql, values);
 
-    await query(sql, [
-      entity.id,
-      if (_hasTenant) _tenantId,
-    ]);
+    await query(sql, values);
   }
 
   Future<void> deleteById(int id) async {
     var sql = 'delete from $_tablename where id = ?';
 
-    sql = appendTenantClause(sql);
+    final values = <String>['$id'];
 
-    await query(sql, [
-      id,
-      if (_hasTenant) _tenantId,
-    ]);
+    sql = appendTenantClause(sql, values);
+
+    await query(sql, values);
   }
 
   String getTablename() => _tablename;
@@ -220,6 +221,10 @@ abstract class Dao<E> {
       // datetime
       else if (value is DateTime) {
         convertedValues.add(DateFormat('yyyy-MM-dd HH:mm:ss').format(value));
+      } else if (value is Date) {
+        convertedValues.add(DateFormat('yyyy-MM-dd').format(value.asDateTime));
+      } else if (value is Time) {
+        convertedValues.add(value.format());
       }
       // bool
       else if (value is bool) {
@@ -237,4 +242,21 @@ abstract class Dao<E> {
     }
     return convertedValues;
   }
+
+  /// If this Dao is a [DaoTenant] then the [DaoTenant.validate]
+  /// method will be called to check that multi-tenancy is being
+  /// enforced in the query.
+  void validate(String query) {
+    // no op
+  }
+
+  /// Is overriden by [DaoTenant] if this Dao is
+  /// a [DaoTenant]
+  String appendTenantClause(String sql, List<String?> values) => sql;
+
+  /// Overrride point for [DaoTenant]
+  void injectTenant(FieldList fields, List<String?> values) {}
+
+  /// override point for [DaoTenant]
+  void prepareInsert(FieldList fields, List<String?> values) {}
 }

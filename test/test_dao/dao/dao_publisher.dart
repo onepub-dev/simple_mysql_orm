@@ -7,7 +7,7 @@ class PublisherDao extends Dao<Publisher> {
   PublisherDao.withDb(Db db) : super.withDb(db, tablename);
 
   Future<Publisher?> getByName(String name) async {
-    final row = await getByField('name', name);
+    final row = await tryByField('name', name);
 
     if (row == null) {
       return null;

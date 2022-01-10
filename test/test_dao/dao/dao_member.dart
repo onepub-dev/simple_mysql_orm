@@ -1,5 +1,4 @@
 import 'package:simple_mysql_orm/simple_mysql_orm.dart';
-import 'package:simple_mysql_orm/src/dao/tenant.dart';
 import '../model/member.dart';
 
 class MemberDao extends DaoTenant<Member> {
@@ -9,7 +8,7 @@ class MemberDao extends DaoTenant<Member> {
       : super.withDb(db, tableName: tablename, tenantFieldName: 'publisherId');
 
   Future<Member?> getByName(String name) async {
-    final row = await getByField('email', name);
+    final row = await tryByField('email', name);
 
     if (row == null) {
       return null;

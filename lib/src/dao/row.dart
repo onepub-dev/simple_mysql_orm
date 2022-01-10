@@ -46,4 +46,13 @@ class Row {
 
   Money? tryAsMoney(String name) =>
       fields[name] == null ? null : fields[name] as Money;
+
+  T? asCustom<T>(String name, T? Function(Object? value) convertTo) {
+    final dynamic value = fields[name];
+
+    if (value == null) {
+      return null;
+    }
+    return convertTo(value);
+  }
 }

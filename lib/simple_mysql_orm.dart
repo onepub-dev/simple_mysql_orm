@@ -7,5 +7,6 @@ export 'src/dao/tenant.dart';
 export 'src/dao/transaction.dart';
 export 'src/exceptions.dart';
 export 'src/model/entity.dart';
+export 'src/model/entity_tenant.dart';
 export 'src/util/date_extension.dart';
 export 'src/util/time_extension.dart';

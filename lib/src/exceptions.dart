@@ -6,6 +6,10 @@ class UnknownEntityIdException extends MySqlORMException {
   UnknownEntityIdException(String message) : super(message);
 }
 
+class DatabaseIntegrityException extends MySqlORMException {
+  DatabaseIntegrityException(String message) : super(message);
+}
+
 class NestedTransactionException extends MySqlORMException {
   NestedTransactionException(String message) : super(message);
 }

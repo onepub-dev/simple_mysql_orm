@@ -1,7 +1,6 @@
 library builder;
 
-import '../dao/dao.dart';
-import '../dao/db.dart';
+import '../../simple_mysql_orm.dart';
 
 part 'delete.dart';
 part 'select.dart';

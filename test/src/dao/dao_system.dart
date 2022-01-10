@@ -12,5 +12,8 @@ class DaoSystem extends Dao<System> {
   System fromRow(Row row) => System.fromRow(row);
 
   Future<String?> getByKey(String keyName) async =>
-      (await getByField('key', keyName))?.value;
+      (await getByField('key', keyName)).value;
+
+  Future<String?> tryByKey(String keyName) async =>
+      (await tryByField('key', keyName))?.value;
 }

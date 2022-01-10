@@ -6,7 +6,7 @@ class PackageDao extends Dao<Package> {
   PackageDao.withDb(Db db) : super.withDb(db, tablename);
 
   Future<Package?> getByName(String name) async {
-    final row = await getByField('name', name);
+    final row = await tryByField('name', name);
 
     if (row == null) {
       return null;

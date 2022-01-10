@@ -1,7 +1,6 @@
 import 'package:dcli/dcli.dart';
 import 'package:logging/logging.dart';
 import 'package:simple_mysql_orm/simple_mysql_orm.dart';
-import 'package:simple_mysql_orm/src/dao/tenant.dart';
 
 import 'src/dao/dao_member.dart';
 import 'src/dao/dao_publisher.dart';
@@ -45,8 +44,7 @@ Future<Member> getTestMember({required int publisherId}) async {
   final daoMember = DaoMember();
   var member = await daoMember.tryByEmail(email: testMemberEmail);
   if (member == null) {
-    final memberId = await daoMember
-        .persist(createMember(testMemberEmail, publisherId: publisherId));
+    final memberId = await daoMember.persist(createMember(testMemberEmail));
     member = await daoMember.getById(memberId);
   }
   return member;
@@ -93,8 +91,8 @@ Publisher createPublisher(String name) {
   return publisher;
 }
 
-Member createMember(String email, {required int publisherId}) {
-  final member = Member(email: email, publisherId: publisherId);
+Member createMember(String email) {
+  final member = Member(email: email);
 
   return member;
 }
