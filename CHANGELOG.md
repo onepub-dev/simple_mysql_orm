@@ -1,3 +1,8 @@
+# 1.4.0-beta.2
+- reworked tenant implementation to simplify the UI. updated the readme to include doco on tenants.
+- additional unit tests.
+- changed tenantColumnName to tenantFieldName for consistency.
+
 # 1.4.0-beta.1
 - Added support for mulit-tenancy.
 - Improved the exception handling and logging when a mysqlexception is throw. We now (mostly) throw a coherent stack trace.

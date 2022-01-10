@@ -49,13 +49,8 @@ class Member extends EntityTenant<Member> {
   late DateTime updatedAt;
 
   @override
-  FieldList get fields => [
-        'email',
-        'startDate',
-        'enabled',
-        'createdAt',
-        'updatedAt'
-      ];
+  FieldList get fields =>
+      ['email', 'startDate', 'enabled', 'createdAt', 'updatedAt'];
 
   @override
   ValueList get values => [email, startDate, enabled, createdAt, updatedAt];
