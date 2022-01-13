@@ -53,7 +53,8 @@ void main() {
   test('invalid nested transaction ...', () async {
     await expectLater(
         () async => withTransaction(() async {
-              await withTransaction(() async {});
+              await withTransaction(() async {},
+                  nesting: TransactionNesting.notAllowed);
             }),
         throwsA(isA<NestedTransactionException>()));
     await DbPool().close();

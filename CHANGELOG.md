@@ -1,3 +1,11 @@
+# 2.0.2
+- changed the default transaction nesting to 'nested' as this is the most common operation.
+- cleanedup the tenantbypass logic.
+- withTenantBypass now returns a value.
+- added check in 'update' for a valid id and added a helpful message if the id is notSet.
+- added standard method for attaching tenant id.
+- colour coded log messages based on sql action
+
 # 2.0.1
 - A number of multi-tenant fixes.
 
