@@ -58,7 +58,7 @@ import 'shared_pool.dart';
 /// completes. So this option allows you to inspect the db
 /// as updates occur.
 Future<R> withTransaction<R>(Future<R> Function() action,
-    {TransactionNesting nesting = TransactionNesting.notAllowed,
+    {TransactionNesting nesting = TransactionNesting.nested,
     bool useTransaction = true,
     String? debugName}) async {
   final nestedTransaction = Scope.hasScopeKey(Transaction.transactionKey);

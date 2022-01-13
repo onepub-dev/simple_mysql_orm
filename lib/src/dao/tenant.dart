@@ -1,4 +1,5 @@
 import 'package:scope/scope.dart';
+import 'transaction.dart';
 
 /// SMO lightly supports the concept of a multi-tenant system.
 ///
