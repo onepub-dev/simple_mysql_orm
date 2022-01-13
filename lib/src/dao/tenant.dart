@@ -7,6 +7,8 @@ import 'package:scope/scope.dart';
 /// To setup a multi-tenant system you must
 /// Runs [action] with all db access scoped to only those records
 /// owned by the tenant.
+///
+/// You need to inject your own [Transaction] into the scope.
 Future<T> withTenant<T>(
         {required int tenantId, required Future<T> Function() action}) async =>
     await (Scope('withTenant')
@@ -20,12 +22,10 @@ Future<T> withTenant<T>(
 /// Use this method to access DaoTenants without constraining
 /// the results to a single tenant.
 /// It is appropriate to use this for things like cross tenant reporting.
-Future<void> withTenantByPass({required Future<void> Function() action}) async {
-  await (Scope('withTenantByPass')..value<bool>(Tenant._bypassTenantKey, true))
-      .run(() async {
-    await action();
-  });
-}
+Future<R> withTenantByPass<R>({required Future<R> Function() action}) async =>
+    await (Scope('withTenantByPass')
+          ..value<bool>(Tenant._bypassTenantKey, true))
+        .run(() async => action());
 
 // ignore: avoid_classes_with_only_static_members
 class Tenant {
