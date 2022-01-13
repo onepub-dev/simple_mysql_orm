@@ -1,10 +1,11 @@
 name: simple_mysql_orm
-version: 2.0.2
+version: 3.0.0-beta.1
 description: A simple ORM wrapper for mysql with Transaction support.
 repository: https://github.com/bsutton/simple_mysql_orm
 environment: 
   sdk: '>=2.16.0-80.1.beta <3.0.0'
 dependencies: 
+  collection: ^1.15.0
   date_time: ^0.5.0
   dcli: ^1.16.0
   dcli_core: ^0.0.5

@@ -1,4 +1,4 @@
-# 2.0.2
+# 3.0.0-beta.1
 - changed the default transaction nesting to 'nested' as this is the most common operation.
 - cleanedup the tenantbypass logic.
 - withTenantBypass now returns a value.
