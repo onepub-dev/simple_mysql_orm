@@ -49,6 +49,7 @@ abstract class Dao<E> {
     return fromResults(results);
   }
 
+
   /// use this to execute a query that returns a single row with
   /// a single column
   /// Its useful for 'sum' type queries.

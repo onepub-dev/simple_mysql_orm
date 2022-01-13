@@ -11,15 +11,10 @@ abstract class DaoTenant<E extends EntityTenant<E>> extends Dao<E> {
 
   String tenantFieldName;
 
-  @override
-  String appendTenantClause(String sql, List<String?> values) {
-    var _sql = sql;
-    if (Tenant.inTenantScope) {
-      _sql += ' and `${getTablename()}`.`$tenantFieldName`=?';
-      values.add('${Tenant.tenantId}');
-    }
-    return _sql;
-  }
+  /// Assumes that the last clause in [query] is a where clause
+  /// and appends the tenant id if we are in tenant mode.
+  Future<List<E>> queryTenant(String _query, ValueList values) async =>
+      query(appendTenantWhere(_query), appendTenantValue(values));
 
   @override
   Future<List<E>> getListByField(String fieldName, String fieldValue,
@@ -34,7 +29,7 @@ abstract class DaoTenant<E extends EntityTenant<E>> extends Dao<E> {
       sql += 'where `$fieldName` = ? ';
     }
 
-    return query(appendTenantWhere(sql), appendTenantValue(values));
+    return queryTenant(sql, values);
   }
 
   String appendTenantWhere(String sql) {
@@ -45,7 +40,13 @@ abstract class DaoTenant<E extends EntityTenant<E>> extends Dao<E> {
     return _sql;
   }
 
-  ValueList appendTenantValue(List<String> values) {
+  @override
+  String appendTenantClause(String sql, List<String?> values) {
+    appendTenantValue(values);
+    return appendTenantWhere(sql);
+  }
+
+  ValueList appendTenantValue(List<Object?> values) {
     if (Tenant.inTenantScope) {
       values.add('${Tenant.tenantId}');
     }
@@ -64,7 +65,7 @@ abstract class DaoTenant<E extends EntityTenant<E>> extends Dao<E> {
   /// mis-configured.
   @override
   void validate(String query) {
-    if (Tenant.inTenantScope) {
+    if (!Tenant.inTenantBypassScope) {
       // if (!Tenant.hasTenantId) {
       //   /// oops. [dao] is a tenant but no tenant id has been passed.
       //   throw MissingTenantException('The dao ${getTablename()} is a tenant '

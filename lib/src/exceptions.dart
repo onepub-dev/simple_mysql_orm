@@ -15,8 +15,8 @@ class MissingTenantException extends MySqlORMException {
 }
 
 class MySqlORMException implements Exception {
-  String message;
   MySqlORMException(this.message);
+  String message;
 
   @override
   String toString() => message;
