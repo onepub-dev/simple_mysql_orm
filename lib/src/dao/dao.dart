@@ -7,13 +7,8 @@ import 'package:galileo_mysql/galileo_mysql.dart' hide MySqlConnection;
 import 'package:intl/intl.dart';
 import 'package:meta/meta.dart';
 
+import '../../simple_mysql_orm.dart';
 import '../builder/builder.dart';
-import '../exceptions.dart';
-import '../model/entity.dart';
-import 'dao_tenant.dart';
-import 'db.dart';
-import 'row.dart';
-import 'transaction.dart';
 
 abstract class Dao<E> {
   /// Create a dao object taking the Database from
@@ -211,6 +206,16 @@ abstract class Dao<E> {
     await query(sql, values);
   }
 
+  Future<void> removeAll() async {
+    var sql = 'delete from $_tablename ';
+
+    final values = <String>[];
+
+    sql = appendTenantClause(sql, values, addWhere: true);
+
+    await query(sql, values);
+  }
+
   Future<void> removeById(int id) async {
     var sql = 'delete from $_tablename where id = ?';
 
@@ -265,7 +270,9 @@ abstract class Dao<E> {
 
   /// Is overriden by [DaoTenant] if this Dao is
   /// a [DaoTenant]
-  String appendTenantClause(String sql, List<String?> values) => sql;
+  String appendTenantClause(String sql, List<String?> values,
+          {bool addWhere = false}) =>
+      sql;
 
   /// Overrride point for [DaoTenant]
   void injectTenant(FieldList fields, List<String?> values) {}
