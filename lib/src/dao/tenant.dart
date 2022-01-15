@@ -48,7 +48,7 @@ class Tenant {
       Scope.hasScopeKey<bool>(_bypassTenantKey) &&
       use(_bypassTenantKey) == true;
 
-  /// True if we are in tenant mode as the user called [withTenantByPass]
+  /// True if we are in tenant mode as the user called [withTenant]
   /// and we have not been bypassed.
   static bool get inTenantScope =>
       Scope.hasScopeKey<int>(tenantIdKey) && !inTenantBypassScope;
