@@ -57,9 +57,15 @@ import 'shared_pool.dart';
 /// as soon as the occur rather than only once the transaction
 /// completes. So this option allows you to inspect the db
 /// as updates occur.
+/// 
+/// For most operations you don't provide a [DbPool] and the
+/// transaction obtains one by calling [DbPool()].
+/// In some cases you may want to provide db connections from 
+/// an alternate pool. In these cases pass a pool to [dbPool].
 Future<R> withTransaction<R>(Future<R> Function() action,
     {TransactionNesting nesting = TransactionNesting.nested,
     bool useTransaction = true,
+    DbPool? dbPool,
     String? debugName}) async {
   final nestedTransaction = Scope.hasScopeKey(Transaction.transactionKey);
 
@@ -87,15 +93,18 @@ Future<R> withTransaction<R>(Future<R> Function() action,
 Future<R> _runTransaction<R>(Future<R> Function() action,
     {required bool useTransaction,
     required bool shareDb,
-    required String? debugName}) async {
+    required String? debugName,
+    DbPool? dbPool}) async {
   ConnectionWrapper<Db>? wrapper;
+
+  dbPool ??= DbPool();
 
   try {
     Db db;
     if (shareDb) {
       db = Transaction.current.db;
     } else {
-      wrapper = await DbPool().obtain();
+      wrapper = await dbPool.obtain();
       db = wrapper.wrapped;
     }
 
@@ -106,7 +115,7 @@ Future<R> _runTransaction<R>(Future<R> Function() action,
         .run(() async => transaction.run(action, debugName: debugName));
   } finally {
     if (wrapper != null) {
-      await DbPool().release(wrapper);
+      await dbPool.release(wrapper);
     }
   }
 }
