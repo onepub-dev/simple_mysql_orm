@@ -7,6 +7,7 @@ import 'package:settings_yaml/settings_yaml.dart';
 import '../exceptions.dart';
 import 'db.dart';
 import 'shared_pool.dart';
+import 'transaction.dart';
 
 /// A pool of database connections.
 class DbPool {
@@ -17,15 +18,61 @@ class DbPool {
     return _self!;
   }
 
+  /// Create a DbPool from settings at [pathToSettings]
+  /// ignoring the database name so no default schema is selected.
+  ///
+  /// Use this for operations that create and drop  schemas.
+  ///
+  /// Note: you can't use [DbPool()] to fetch this pool.
+  ///
+  /// The intended use case is to use this as a short lived
+  /// alternate pool that you pass to [withTransaction].
+  ///
+  /// ```dart
+  /// final pool = DbPool.fromSettingsNoDatabase(....);
+  /// withTransation(() async {
+  ///     restoreDatabase(pathToBackup: '/mybackup.sql');
+  /// }
+  /// , dbPool: pool
+  /// );
+  ///
+  /// You can override the min no. of connections in the pool by passing in
+  /// [overrideMin]. This is mainly for unit testing.
+  /// You can override the max no. of connections in the pool by passing in
+  /// [overrideMax]. This is mainly for unit testing.
+  factory DbPool.fromSettingsNoDatabase(
+          {required String pathToSettings,
+          int? overrideMax,
+          int? overrideMin,
+          Duration? overrideExcessDuration}) =>
+      DbPool._fromSettingsWithOverrides(
+          pathToSettings: pathToSettings,
+          overrideMax: overrideMax,
+          overrideMin: overrideMin,
+          overrideExcessDuration: overrideExcessDuration,
+          useDatabase: false);
+
   /// You can override the min no. of connections in the pool by passing in
   /// [overrideMin]. This is mainly for unit testing.
   /// You can override the max no. of connections in the pool by passing in
   /// [overrideMax]. This is mainly for unit testing.
   factory DbPool.fromSettings(
+          {required String pathToSettings,
+          int? overrideMax,
+          int? overrideMin,
+          Duration? overrideExcessDuration}) =>
+      _self = DbPool._fromSettingsWithOverrides(
+          pathToSettings: pathToSettings,
+          overrideMax: overrideMax,
+          overrideMin: overrideMin,
+          overrideExcessDuration: overrideExcessDuration);
+
+  factory DbPool._fromSettingsWithOverrides(
       {required String pathToSettings,
       int? overrideMax,
       int? overrideMin,
-      Duration? overrideExcessDuration}) {
+      Duration? overrideExcessDuration,
+      bool useDatabase = true}) {
     if (!exists(pathToSettings)) {
       throw ConfigurationException('The settings file for mysql is missing: '
           '${truepath(pathToSettings)}');
@@ -38,21 +85,19 @@ class DbPool {
         defaultValue: 'localhost');
     final port =
         settings.asInt(Db.mysqlPortKey.toLowerCase(), defaultValue: 3306);
-    final database = settings.asString(Db.mysqlDatabaseKey.toLowerCase(),
-        defaultValue: 'onepub');
+    final database = settings.asString(Db.mysqlDatabaseKey.toLowerCase());
     final minSize = settings.asInt(DbPool.mysqMinPoolSizeKey, defaultValue: 5);
     final maxSize = settings.asInt(DbPool.mysqMaxPoolSizeKey, defaultValue: 50);
 
-    _self = DbPool._internal(
+    return DbPool._internal(
         host: host,
         port: port,
         user: username,
         password: password,
-        database: database,
+        database: useDatabase ? database : null,
         minSize: overrideMin ?? minSize,
         maxSize: overrideMax ?? maxSize,
         excessDuration: overrideExcessDuration ?? const Duration(minutes: 1));
-    return _self!;
   }
 
   factory DbPool.fromEnv() {
@@ -78,11 +123,12 @@ class DbPool {
       required int port,
       required String user,
       required String password,
-      required String database,
       required int minSize,
       required int maxSize,
+      String? database,
       Duration excessDuration = const Duration(minutes: 1)})
-      : pool = SharedPool(
+      : _database = database,
+        pool = SharedPool(
             MySqlConnectonManager(ConnectionSettings(
                 host: host,
                 port: port,
@@ -94,6 +140,11 @@ class DbPool {
             excessDuration: excessDuration);
 
   static DbPool? _self;
+
+  String? _database;
+
+  /// Returns the database name this pool is attached to.
+  String? get database => _database;
 
   /// The DbPool is open.
   bool open = true;

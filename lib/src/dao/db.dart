@@ -30,8 +30,19 @@ class Db implements Transactionable {
         database: env[mysqlDatabaseKey] ?? 'onepub');
   }
 
+  /// Connects the mysql server without setting the default schema.
+  /// You can use this for actions like restoring a database.
+  /// 
+  factory Db.fromSettingsNoDatabase(g.ConnectionSettings settings) =>
+      Db._internal(
+          database: null,
+          host: settings.host,
+          port: settings.port,
+          user: settings.user!,
+          password: settings.password!);
+
   factory Db.fromSettings(g.ConnectionSettings settings) => Db._internal(
-      database: settings.db!,
+      database: settings.db,
       host: settings.host,
       port: settings.port,
       user: settings.user!,
@@ -42,7 +53,7 @@ class Db implements Transactionable {
     required int port,
     required String user,
     required String password,
-    required String database,
+    required String? database,
   }) {
     id = _nextId;
     settings = g.ConnectionSettings(
