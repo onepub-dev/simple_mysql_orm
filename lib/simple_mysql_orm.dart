@@ -9,4 +9,5 @@ export 'src/exceptions.dart';
 export 'src/model/entity.dart';
 export 'src/model/entity_tenant.dart';
 export 'src/util/date_extension.dart';
+export 'src/util/schema_management.dart';
 export 'src/util/time_extension.dart';
