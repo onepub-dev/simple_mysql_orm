@@ -1,4 +1,6 @@
 import 'package:scope/scope.dart';
+import '../exceptions.dart';
+import '../model/entity.dart';
 import 'transaction.dart';
 
 /// SMO lightly supports the concept of a multi-tenant system.
@@ -11,11 +13,16 @@ import 'transaction.dart';
 ///
 /// You need to inject your own [Transaction] into the scope.
 Future<T> withTenant<T>(
-        {required int tenantId, required Future<T> Function() action}) async =>
-    await (Scope('withTenant')
-          ..value<int>(Tenant.tenantIdKey, tenantId)
-          ..value<bool>(Tenant._bypassTenantKey, false))
-        .run(() async => action());
+    {required int tenantId, required Future<T> Function() action}) async {
+  if (tenantId == Entity.notSet) {
+    throw IdentityNotSetException('Invalid id ($tenantId) passed. '
+        "If you don't have a tenant use 'withTenantByPass'");
+  }
+  return (Scope('withTenant')
+        ..value<int>(Tenant.tenantIdKey, tenantId)
+        ..value<bool>(Tenant._bypassTenantKey, false))
+      .run(() async => action());
+}
 
 /// Allows a DaoTenant to access the db withouth passing in a tenant id.
 /// Use this method with CARE.
