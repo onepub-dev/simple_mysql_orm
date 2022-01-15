@@ -57,10 +57,10 @@ import 'shared_pool.dart';
 /// as soon as the occur rather than only once the transaction
 /// completes. So this option allows you to inspect the db
 /// as updates occur.
-/// 
+///
 /// For most operations you don't provide a [DbPool] and the
 /// transaction obtains one by calling [DbPool()].
-/// In some cases you may want to provide db connections from 
+/// In some cases you may want to provide db connections from
 /// an alternate pool. In these cases pass a pool to [dbPool].
 Future<R> withTransaction<R>(Future<R> Function() action,
     {TransactionNesting nesting = TransactionNesting.nested,

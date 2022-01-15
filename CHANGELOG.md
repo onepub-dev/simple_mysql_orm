@@ -1,3 +1,13 @@
+# 3.0.0-beta.2
+- Added a set of methods to help manage your mysql schema.
+- The withTransaction method takes an optional DbPool which if passed will be used rather than calling DbPool.
+- added an addWhere arg to the tenant appenders so you can control whether it needs to add an where clause or not.
+- Added a Dao.removeAll method.
+- corrected the doco for inTenantScope
+- Added method to create a pool without a database so that you can use it to create/drop schemas. 
+- Removed a hardcoded default db name. 
+- Added a method to retrieve the dbname the pool was created with.
+
 # 3.0.0-beta.1
 - changed the default transaction nesting to 'nested' as this is the most common operation.
 - cleanedup the tenantbypass logic.

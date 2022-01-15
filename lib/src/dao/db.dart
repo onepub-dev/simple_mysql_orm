@@ -32,7 +32,7 @@ class Db implements Transactionable {
 
   /// Connects the mysql server without setting the default schema.
   /// You can use this for actions like restoring a database.
-  /// 
+  ///
   factory Db.fromSettingsNoDatabase(g.ConnectionSettings settings) =>
       Db._internal(
           database: null,
