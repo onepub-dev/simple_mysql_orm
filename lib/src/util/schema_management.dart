@@ -87,7 +87,7 @@ Future<void> restoreDatabase(
 
   final statements = schemaScript.split(';');
 
-  await withNoConstraints(() async {
+  await withNoConstraints(action: () async {
     for (final statement in statements) {
       if (statement.isNotEmpty) {
         await Transaction.current.db.query(statement);
@@ -112,7 +112,7 @@ WHERE SCHEMA_NAME = '$databaseName'
 /// disabled.
 ///
 /// You need to call this method within an existing transaction.
-Future<R> withNoConstraints<R>(Future<R> Function() action) async {
+Future<R> withNoConstraints<R>({required Future<R> Function() action}) async {
   await Transaction.current.db.query('SET FOREIGN_KEY_CHECKS=0');
   final R result;
   try {
