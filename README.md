@@ -427,3 +427,28 @@ For those types when you that might not be the case you can use the following:
 
 
 
+# Code Generator
+
+We now have a very crude code generator.
+
+It can generate a model and dao class from a database table.
+
+To use the generator
+
+```bash
+dart pub global activate simple_mysql_orm
+build_dao --host <host> --port <port> --database <db> --user <user> --password <password> --table <table>
+```
+
+The above will generate to files in the current directory
+
+* <table>.dart
+* dao_<table>.dart
+
+If either file exists the build will fail.
+
+You can exclude the generation of the dao file by passing the `--no-dao` flag.
+
+You can control the name of the output files by passing --file <filename>.
+The dao filename will be `dao_<filename>`
+
