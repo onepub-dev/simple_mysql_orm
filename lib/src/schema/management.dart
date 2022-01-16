@@ -62,6 +62,10 @@ Future<void> dropDatabase(String databaseName) async {
   await Transaction.current.db.query('drop database $databaseName');
 }
 
+Future<void> createDatabase(String databaseName) async {
+  await Transaction.current.db.query('create database $databaseName');
+}
+
 /// Restores a database from a .sql file created by
 /// mysqldump.
 ///
