@@ -14,6 +14,7 @@ dependencies:
   logging: ^1.0.2
   meta: ^1.7.0
   money2: ^3.1.2
+  recase: ^4.0.0
   scope: ^2.2.0
   settings_yaml: ^3.3.1
 dev_dependencies: 
@@ -22,3 +23,6 @@ dev_dependencies:
 dependency_overrides: 
   scope: 
     path: ../scope
+
+exectuables:
+  build_dao:
