@@ -100,6 +100,24 @@ class DbPool {
         excessDuration: overrideExcessDuration ?? const Duration(minutes: 1));
   }
 
+  factory DbPool.fromArgs({
+    required String host,
+    required String database,
+    required String user,
+    required String password,
+    int port = 3306,
+    int minSize = 5,
+    int maxSize = 50,
+  }) =>
+      _self = DbPool._internal(
+          host: host,
+          port: port,
+          user: user,
+          password: password,
+          database: database,
+          minSize: minSize,
+          maxSize: maxSize);
+
   factory DbPool.fromEnv() {
     final user = Db.getEnv(Db.mysqlUsernameKey);
     final password = Db.getEnv(Db.mysqlPasswordKey);
