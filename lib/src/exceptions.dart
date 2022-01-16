@@ -14,6 +14,14 @@ class MissingTenantException extends MySqlORMException {
   MissingTenantException(String message) : super(message);
 }
 
+class ModelFileExistsException extends MySqlORMException {
+  ModelFileExistsException(String message) : super(message);
+}
+
+class DaoFileExistsException extends MySqlORMException {
+  DaoFileExistsException(String message) : super(message);
+}
+
 class MySqlORMException implements Exception {
   MySqlORMException(this.message);
   String message;
