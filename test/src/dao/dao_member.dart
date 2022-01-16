@@ -4,9 +4,9 @@ import '../../test_dao/model/member.dart';
 import 'dao_publisher.dart';
 
 class DaoMember extends DaoTenant<Member> {
-  DaoMember() : super(tableName: tablename, tenantFieldName: 'publisherId');
+  DaoMember() : super(tablename, tenantFieldName: 'publisherId');
   DaoMember.withDb(Db db)
-      : super.withDb(db, tableName: tablename, tenantFieldName: 'publisherId');
+      : super.withDb(db, tablename, tenantFieldName: 'publisherId');
 
   /// Throws an [UnknownMemberException] if the [email]
   /// is not from one of members.

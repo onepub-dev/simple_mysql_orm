@@ -13,7 +13,7 @@ class System extends Entity<System> {
   factory System.fromRow(Row row) {
     final id = row.asInt('id');
     final key = row.asString('key');
-    final value = row.tryAsString('value');
+    final value = row.tryString('value');
     final createdAt = row.asDateTime('createdAt');
     final updatedAt = row.asDateTime('updatedAt');
 
