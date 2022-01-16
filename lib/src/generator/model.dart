@@ -177,6 +177,10 @@ String _fromType(Column column) {
       return "row.${get}Bool('$name')";
     case Type.time:
       return "row.${get}Date('$name')";
+    case Type.enumT:
+      final typeName = column.typeDetails.enumName;
+      return "row.${get}Custom('$name', "
+          '(value) => ${typeName}Ex.fromName(value as String))!';
   }
 }
 

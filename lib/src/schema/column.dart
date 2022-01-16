@@ -1,3 +1,5 @@
+import 'package:recase/recase.dart';
+
 import '../dao/row.dart';
 import '../util/enum_helper.dart';
 
@@ -6,19 +8,21 @@ import '../util/enum_helper.dart';
 class Column {
   Column.fromRow(Row row) {
     name = row.fields['Field'] as String;
-    final _typeDetails = _parseType(row.fields['Type'].toString());
-    type = _typeDetails.type;
-    size = _typeDetails.size;
+    typeDetails = _parseType(row.fields['Type'].toString(), name);
+    type = typeDetails.type;
+    size = typeDetails.size;
     allowNull = (row.fields['Null'] as String) == 'YES';
     key = KeyEx.fromName(row.fields['Key'] as String);
     autoIncrement = (row.fields['Extra'] as String) == 'auto_increment';
   }
+
   late String name;
   late Type type;
   late int size;
   late bool allowNull;
   late Key key;
   late bool autoIncrement;
+  late TypeDetails typeDetails;
 
   String dartType() {
     switch (type) {
@@ -37,27 +41,43 @@ class Column {
         return 'bool';
       case Type.time:
         return 'Time';
+      case Type.enumT:
+        return typeDetails.enumName!;
     }
   }
 
-  _TypeDetails _parseType(String type) {
+  TypeDetails _parseType(String type, String name) {
+    if (type.startsWith('enum(')) {
+      return _parseEnumType(type, name);
+    }
     final index = type.indexOf('(');
     if (index != -1) {
       // int(4)
       final typeName = type.substring(0, index);
       final size = type.substring(index + 1, type.length - 1);
-      return _TypeDetails(typeName, int.parse(size));
+      return TypeDetails(typeName, int.parse(size));
     }
 
-    return _TypeDetails(type, 1);
+    return TypeDetails(type, 1);
   }
 }
 
-class _TypeDetails {
-  _TypeDetails(String type, this.size) : type = TypeEx.fromName(type);
+/// For an enum we just return the column name in PascalCase
+TypeDetails _parseEnumType(String type, String name) =>
+    TypeDetails.forEnum(name);
 
+class TypeDetails {
+  TypeDetails(String type, this.size) : type = TypeEx.fromName(type);
+
+  TypeDetails.forEnum(String columnName)
+      : type = Type.enumT,
+        size = 1,
+        enumName = ReCase(columnName).pascalCase;
   Type type;
   int size;
+
+  /// only set if [type] == [Type.enumT]
+  String? enumName;
 }
 
 enum Key {
@@ -78,6 +98,7 @@ enum Type {
   datetime,
   date,
   time,
+  enumT,
 }
 
 extension TypeEx on Type {
