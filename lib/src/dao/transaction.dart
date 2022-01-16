@@ -8,6 +8,7 @@ import 'package:scope/scope.dart';
 import '../exceptions.dart';
 import 'db.dart';
 import 'db_pool.dart';
+import 'row.dart';
 import 'shared_pool.dart';
 
 /// Obtains a connection and starts a MySQL transaction.
@@ -266,6 +267,19 @@ class Transaction<R> {
 
     db.rollback();
   }
+}
+
+/// Lets you run a query outside the scope of a Dao.
+///
+/// Requires an active [Transaction].
+Future<List<Row>> tquery(String sql) async {
+  final results = await Transaction.current.db.query(sql);
+
+  final rows = <Row>[];
+  for (final results in results) {
+    rows.add(Row(results.fields));
+  }
+  return rows;
 }
 
 class InvalidTransactionStateException implements Exception {
