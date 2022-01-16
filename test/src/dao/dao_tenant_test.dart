@@ -13,7 +13,7 @@ void main() {
   setUp(testSetup);
 
   test('dao tenant ...', () async {
-    await withTransaction(() async {
+    await withTransaction(action: () async {
       final daoSystem = await createTestSystemKey();
 
       final noojee =

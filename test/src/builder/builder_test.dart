@@ -14,7 +14,7 @@ void main() {
   });
 
   test('builder ...', () async {
-    await withTransaction<void>(() async {
+    await withTransaction<void>(action: () async {
       await PublisherDao().delete().where().eq('name', 'brett').run();
     });
   });

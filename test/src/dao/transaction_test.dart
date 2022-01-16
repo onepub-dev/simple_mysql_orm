@@ -25,14 +25,14 @@ void main() {
   });
 
   test('transaction ... obtain/release', () async {
-    await withTransaction(() async {
+    await withTransaction(action: () async {
       expect(() => DbPool().close(), throwsA(isA<MySQLException>()));
     });
     await DbPool().close();
   });
   test('transaction ...', () async {
     var ran = false;
-    await withTransaction(() async {
+    await withTransaction(action: () async {
       final db = Transaction.current.db;
       expect(db, isNotNull);
       final dao = PublisherDao();
@@ -52,8 +52,8 @@ void main() {
 
   test('invalid nested transaction ...', () async {
     await expectLater(
-        () async => withTransaction(() async {
-              await withTransaction(() async {},
+        () async => withTransaction(action: () async {
+              await withTransaction(action: () async {},
                   nesting: TransactionNesting.notAllowed);
             }),
         throwsA(isA<NestedTransactionException>()));
@@ -66,20 +66,20 @@ void main() {
     await TransactionTestScope().run(() async {
       final a = Future.delayed(
           const Duration(seconds: 1),
-          () => withTransaction<void>(() {
+          () => withTransaction<void>(action: () {
                 used.add(Transaction.current.db.id);
                 return Future.delayed(const Duration(seconds: 10));
               }));
       final b = Future.delayed(
           const Duration(seconds: 1),
-          () => withTransaction<void>(() {
+          () => withTransaction<void>(action: () {
                 used.add(Transaction.current.db.id);
                 return Future.delayed(const Duration(seconds: 10));
               }));
 
       final c = Future.delayed(
           const Duration(seconds: 1),
-          () => withTransaction<void>(() {
+          () => withTransaction<void>(action: () {
                 used.add(Transaction.current.db.id);
                 return Future.delayed(const Duration(seconds: 10));
               }));
@@ -89,15 +89,15 @@ void main() {
     });
   });
   test('transaction with result', () async {
-    final count = await withTransaction<int>(() async => 1);
+    final count = await withTransaction<int>(action: () async => 1);
     expect(count, 1);
 
-    final name = await withTransaction<String?>(() async => null);
+    final name = await withTransaction<String?>(action: () async => null);
     expect(name, isNull);
   });
   test('nested with no nesting transaction ...', () async {
     var ran = false;
-    await withTransaction(() async {
+    await withTransaction(action: () async {
       ran = true;
       expect(Scope.hasScopeKey(Transaction.transactionKey), isTrue);
     }, nesting: TransactionNesting.nested);
@@ -107,9 +107,9 @@ void main() {
   test('valid nested transaction ...', () async {
     var ran = false;
     Db db;
-    await withTransaction(() async {
+    await withTransaction(action: () async {
       db = Transaction.current.db;
-      await withTransaction(() async {
+      await withTransaction(action: () async {
         expect(db, equals(Transaction.current.db));
         ran = true;
       }, nesting: TransactionNesting.nested);
@@ -121,9 +121,9 @@ void main() {
   test('detached nested transaction ...', () async {
     var ran = false;
     Db db;
-    await withTransaction(() async {
+    await withTransaction(action: () async {
       db = Transaction.current.db;
-      await withTransaction(() async {
+      await withTransaction(action: () async {
         ran = true;
         expect(db, isNot(equals(Transaction.current.db)));
       }, nesting: TransactionNesting.detached);
@@ -135,9 +135,9 @@ void main() {
   test('!useTransaction ...', () async {
     var ran = false;
     Db db;
-    await withTransaction(() async {
+    await withTransaction(action: () async {
       db = Transaction.current.db;
-      await withTransaction(() async {
+      await withTransaction(action: () async {
         ran = true;
         expect(db, isNot(equals(Transaction.current.db)));
       }, nesting: TransactionNesting.detached);

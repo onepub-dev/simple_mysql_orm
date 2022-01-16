@@ -21,7 +21,7 @@ Future<void> testSetup() async {
 
 Future<void> _cleanUpDb() async {
   await withTenantByPass(action: () async {
-    await withTransaction(() async {
+    await withTransaction(action: () async {
       /// we need to remove references to members to overcome
       /// foreign key constraints.
       final daoPublisher = DaoPublisher();

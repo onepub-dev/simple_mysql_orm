@@ -62,8 +62,9 @@ import 'shared_pool.dart';
 /// transaction obtains one by calling [DbPool()].
 /// In some cases you may want to provide db connections from
 /// an alternate pool. In these cases pass a pool to [dbPool].
-Future<R> withTransaction<R>(Future<R> Function() action,
-    {TransactionNesting nesting = TransactionNesting.nested,
+Future<R> withTransaction<R>(
+    {required Future<R> Function() action,
+    TransactionNesting nesting = TransactionNesting.nested,
     bool useTransaction = true,
     DbPool? dbPool,
     String? debugName}) async {
