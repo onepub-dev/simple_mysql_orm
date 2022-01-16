@@ -30,7 +30,7 @@ class DbPool {
   ///
   /// ```dart
   /// final pool = DbPool.fromSettingsNoDatabase(....);
-  /// withTransation(() async {
+  /// withTransation(action: () async {
   ///     restoreDatabase(pathToBackup: '/mybackup.sql');
   /// }
   /// , dbPool: pool
@@ -173,7 +173,7 @@ class DbPool {
   static String mysqMinPoolSizeKey = 'mysql_min_pool_size';
 
   /// Runs action passing in a [Db] from the pool
-  Future<T> withDb<T>(Future<T> Function(Db db) action) async {
+  Future<T> withDb<T>({required Future<T> Function(Db db) action}) async {
     final wrapper = await obtain();
     try {
       return action(wrapper.wrapped);

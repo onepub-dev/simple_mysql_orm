@@ -21,7 +21,7 @@ Future<void> main() async {
 
   /// create a transaction and run a set of queries
   /// within the transaction.
-  await withTransaction<void>(() async {
+  await withTransaction<void>(action: () async {
     final dao = PackageDao();
 
     /// create a package and save it.
