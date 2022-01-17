@@ -85,7 +85,11 @@ String _valueList(List<Column> columns, int indent) {
     if (column.name == 'id') {
       continue;
     }
-    result.writeln('''$prefix${column.name},''');
+    if (column.type == Type.enumT) {
+      result.writeln('''$prefix${column.name}.name,''');
+    } else {
+      result.writeln('''$prefix${column.name},''');
+    }
   }
   return result.toString();
 }

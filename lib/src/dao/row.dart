@@ -13,8 +13,7 @@ class Row {
 
   /// convert the field with [name] to a int.
   int asInt(String name) => fields[name] as int;
-  int? tryInt(String name) =>
-      fields[name] == null ? null : fields[name] as int;
+  int? tryInt(String name) => fields[name] == null ? null : fields[name] as int;
 
   /// convert the field with [name] to a Map.
   /// Currently expects that the map is stored as a Blob
@@ -47,7 +46,10 @@ class Row {
   Money? tryMoney(String name) =>
       fields[name] == null ? null : fields[name] as Money;
 
-  T? asCustom<T>(String name, T? Function(Object? value) convertTo) {
+  T asCustom<T>(String name, T Function(Object value) convertTo) =>
+      tryCustom(name, (value) => convertTo(value!)!)!;
+
+  T? tryCustom<T>(String name, T? Function(Object? value) convertTo) {
     final dynamic value = fields[name];
 
     if (value == null) {
