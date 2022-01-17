@@ -6,7 +6,7 @@ environment:
   sdk: '>=2.16.0-80.1.beta <3.0.0'
 dependencies: 
   collection: ^1.15.0
-  date_time: ^0.5.0
+  date_time: ^0.6.0
   dcli: ^1.16.0
   dcli_core: ^0.0.5
   galileo_mysql: ^3.0.0
