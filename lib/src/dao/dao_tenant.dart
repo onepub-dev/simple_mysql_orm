@@ -17,7 +17,11 @@ abstract class DaoTenant<E extends EntityTenant<E>> extends Dao<E> {
 
   @override
   Future<List<E>> getListByField(String fieldName, String fieldValue,
-      {bool like = false}) async {
+      {bool like = false,
+      int offset = 0,
+      int limit = 20,
+      String? orderBy,
+      SortDirection sortDirection = SortDirection.asc}) async {
     var sql = 'select * from ${getTablename()} ';
 
     final values = [fieldValue];
@@ -28,7 +32,16 @@ abstract class DaoTenant<E extends EntityTenant<E>> extends Dao<E> {
       sql += 'where `$fieldName` = ? ';
     }
 
-    return queryTenant(sql, values);
+    sql = appendTenantWhere(sql);
+    appendTenantValue(values);
+
+    if (orderBy != null) {
+      sql += 'order by $orderBy ${sortDirection.name} ';
+    }
+
+    sql += 'limit $offset, $limit ';
+
+    return query(sql, values);
   }
 
   String appendTenantWhere(String sql, {bool addWhere = false}) {
@@ -40,7 +53,7 @@ abstract class DaoTenant<E extends EntityTenant<E>> extends Dao<E> {
         _sql += ' and ';
       }
 
-      _sql += '`${getTablename()}`.`$tenantFieldName`=? ';
+      _sql += '`${getTablename()}`.`$tenantFieldName`= ? ';
     }
     return _sql;
   }

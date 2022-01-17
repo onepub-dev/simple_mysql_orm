@@ -75,14 +75,31 @@ abstract class Dao<E> {
     return value;
   }
 
+  /// Perform a query with a where clause [fieldName] = [fieldValue]
+  /// unles the [like] is true in which case we perform
+  /// [fieldName] like [fieldValue].
+  ///
+  /// You can do pagination by passing [offset] and [limit].
+  ///
+  /// Sort the results by passing [orderBy] and [sortDirection]
   Future<List<E>> getListByField(String fieldName, String fieldValue,
-      {bool like = false}) async {
+      {bool like = false,
+      int offset = 0,
+      int limit = 20,
+      String? orderBy,
+      SortDirection sortDirection = SortDirection.asc}) async {
     var sql = 'select * from $_tablename ';
     if (like) {
-      sql += 'where `$fieldName` like ?';
+      sql += 'where `$fieldName` like ? ';
     } else {
-      sql += 'where `$fieldName` = ?';
+      sql += 'where `$fieldName` = ? ';
     }
+
+    if (orderBy != null) {
+      sql += 'order by $orderBy ${sortDirection.name} ';
+    }
+
+    sql += 'limit $offset, $limit ';
 
     return query(sql, [fieldValue]);
   }
@@ -280,3 +297,5 @@ abstract class Dao<E> {
   /// override point for [DaoTenant]
   void prepareInsert(FieldList fields, List<String?> values) {}
 }
+
+enum SortDirection { asc, desc }
