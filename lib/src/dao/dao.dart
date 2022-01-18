@@ -44,6 +44,17 @@ abstract class Dao<E> {
     return fromResults(results);
   }
 
+  Future<E> querySingle(String query, ValueList values) async {
+    final entity = await trySingle(await this.query(query, values));
+    if (entity == null) {
+      throw DatabaseIntegrityException('''
+Failed to retrieve a single row using 
+$query, ${values.join(',')}
+when it was expected to exist''');
+    }
+    return entity;
+  }
+
   /// use this to execute a query that returns a single row with
   /// a single column
   /// Its useful for 'sum' type queries.
@@ -55,7 +66,7 @@ abstract class Dao<E> {
   /// If you are using multi-tenanting then you MUST be certain
   /// to filter by the tenant id as we are unable to inject the
   /// tenant id.
-  Future<S?> querySingle<S>(String query, ValueList values, String fieldName,
+  Future<S?> queryColumn<S>(String query, ValueList values, String fieldName,
       S? Function(String value) convert) async {
     validate(query);
 
