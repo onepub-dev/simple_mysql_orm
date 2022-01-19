@@ -44,6 +44,32 @@ abstract class Dao<E> {
     return fromResults(results);
   }
 
+  /// Allows you to write a custom query against the db providing
+  /// an adaptor to convert the raw fields into a class instance.
+  /// 
+  /// ```dart
+  /// final actionScopes = queryWithAdaptor('select action, scope 
+  /// from acionScope 
+  ///     where id = ?',[1],
+  ///  (row) => ActionScope(row.asInt('action'), row.asString('scope'));
+  /// ```
+  ///
+  /// If you are using multi-tenanting then you MUST be certain
+  /// to filter by the tenant id as we are unable to inject the
+  /// tenant id.
+  Future<List<O>> queryWithAdaptor<O>(
+      String query, ValueList values, O Function(Row row) adaptor) async {
+    validate(query);
+
+    final results = await db.query(query, values);
+
+    final rows = <O>[];
+    for (final results in results) {
+      rows.add(adaptor(Row(results.fields)));
+    }
+    return rows;
+  }
+
   Future<E> querySingle(String query, ValueList values) async {
     final entity = await trySingle(await this.query(query, values));
     if (entity == null) {
