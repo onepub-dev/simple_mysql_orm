@@ -1,3 +1,19 @@
+# 3.0.0-beta.3
+- BREAKING: renamed querySingle to queryColumn. Created new querySingle which returns a single row of columns.
+- BREAKING: changed the tableName named argument on DaoTenant to a positional argument for consistency with the Dao class.
+- Breaking: changed asCustom to return nnbd type and added tryCustom to return null type.
+- BREAKING: changed all tryAs... methods to try... for consistency.
+- BREAKING: for consistency I've changed withTransation's 'action' argument to be a named argument. This delivers better consistency with other method signatures.
+- BREAKING: for consistency I've changed withTransation's 'action' argument to be a named argument. This delivers better consistency with other method signatures.
+- Added new method Dao.queryWithAdaptor which allows you to run adhoc queries and placing the result into a non-entity based class.
+- added, offset, limit, orderBy and sortDirection to Dao.getListByField
+- Exposed the build_dao as an executable which can create dao and model classes from a schema.
+- Added a function tquery to provide easy access to executing queries outside the context of a dao.
+- Added a fromArgs ctor to the DbPool.
+- Moved the schema management functions into their own folder.
+- also made withNoConstraints take a named arg for action.
+- Added check to withTenant if -1 is passed as the tenant id. We now throw.
+
 # 3.0.0-beta.2
 - Added a set of methods to help manage your mysql schema.
 - The withTransaction method takes an optional DbPool which if passed will be used rather than calling DbPool.

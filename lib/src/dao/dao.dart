@@ -46,10 +46,10 @@ abstract class Dao<E> {
 
   /// Allows you to write a custom query against the db providing
   /// an adaptor to convert the raw fields into a class instance.
-  /// 
+  ///
   /// ```dart
-  /// final actionScopes = queryWithAdaptor('select action, scope 
-  /// from acionScope 
+  /// final actionScopes = queryWithAdaptor('select action, scope
+  /// from acionScope
   ///     where id = ?',[1],
   ///  (row) => ActionScope(row.asInt('action'), row.asString('scope'));
   /// ```

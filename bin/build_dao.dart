@@ -24,8 +24,7 @@ Future<void> main(List<String> args) async {
     ..addOption('password', abbr: 'p', mandatory: true, help: 'Password')
     ..addOption('table', abbr: 't', mandatory: true, help: 'Table')
     ..addOption('filename', abbr: 'f', help: 'Path to the output file')
-    ..addFlag('dao', abbr: 'a', help: 'Generate the Dao file as well')
-    ;
+    ..addFlag('dao', abbr: 'a', help: 'Generate the Dao file as well');
 
   final ArgResults result;
   try {

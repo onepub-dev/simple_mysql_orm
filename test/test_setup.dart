@@ -21,22 +21,24 @@ Future<void> testSetup() async {
 
 Future<void> _cleanUpDb() async {
   await withTenantByPass(action: () async {
-    await withTransaction(action: () async {
-      /// we need to remove references to members to overcome
-      /// foreign key constraints.
-      final daoPublisher = DaoPublisher();
-      for (final publisher in await daoPublisher.getAll()) {
-        await daoPublisher.update(publisher);
-      }
+    await withTransaction(
+        action: () async {
+          /// we need to remove references to members to overcome
+          /// foreign key constraints.
+          final daoPublisher = DaoPublisher();
+          for (final publisher in await daoPublisher.getAll()) {
+            await daoPublisher.update(publisher);
+          }
 
-      /// members
-      for (final member in await DaoMember().getAll()) {
-        await DaoMember().remove(member);
-      }
-      for (final publisher in await daoPublisher.getAll()) {
-        await daoPublisher.remove(publisher);
-      }
-    }, debugName: 'test - cleanupDb');
+          /// members
+          for (final member in await DaoMember().getAll()) {
+            await DaoMember().remove(member);
+          }
+          for (final publisher in await daoPublisher.getAll()) {
+            await daoPublisher.remove(publisher);
+          }
+        },
+        debugName: 'test - cleanupDb');
   });
 }
 

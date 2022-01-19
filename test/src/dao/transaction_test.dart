@@ -53,8 +53,8 @@ void main() {
   test('invalid nested transaction ...', () async {
     await expectLater(
         () async => withTransaction(action: () async {
-              await withTransaction(action: () async {},
-                  nesting: TransactionNesting.notAllowed);
+              await withTransaction(
+                  action: () async {}, nesting: TransactionNesting.notAllowed);
             }),
         throwsA(isA<NestedTransactionException>()));
     await DbPool().close();
@@ -97,10 +97,12 @@ void main() {
   });
   test('nested with no nesting transaction ...', () async {
     var ran = false;
-    await withTransaction(action: () async {
-      ran = true;
-      expect(Scope.hasScopeKey(Transaction.transactionKey), isTrue);
-    }, nesting: TransactionNesting.nested);
+    await withTransaction(
+        action: () async {
+          ran = true;
+          expect(Scope.hasScopeKey(Transaction.transactionKey), isTrue);
+        },
+        nesting: TransactionNesting.nested);
     expect(ran, isTrue);
     await DbPool().close();
   });
@@ -109,10 +111,12 @@ void main() {
     Db db;
     await withTransaction(action: () async {
       db = Transaction.current.db;
-      await withTransaction(action: () async {
-        expect(db, equals(Transaction.current.db));
-        ran = true;
-      }, nesting: TransactionNesting.nested);
+      await withTransaction(
+          action: () async {
+            expect(db, equals(Transaction.current.db));
+            ran = true;
+          },
+          nesting: TransactionNesting.nested);
     });
     expect(ran, isTrue);
     await DbPool().close();
@@ -123,10 +127,12 @@ void main() {
     Db db;
     await withTransaction(action: () async {
       db = Transaction.current.db;
-      await withTransaction(action: () async {
-        ran = true;
-        expect(db, isNot(equals(Transaction.current.db)));
-      }, nesting: TransactionNesting.detached);
+      await withTransaction(
+          action: () async {
+            ran = true;
+            expect(db, isNot(equals(Transaction.current.db)));
+          },
+          nesting: TransactionNesting.detached);
     });
     expect(ran, isTrue);
     await DbPool().close();
@@ -135,13 +141,17 @@ void main() {
   test('!useTransaction ...', () async {
     var ran = false;
     Db db;
-    await withTransaction(action: () async {
-      db = Transaction.current.db;
-      await withTransaction(action: () async {
-        ran = true;
-        expect(db, isNot(equals(Transaction.current.db)));
-      }, nesting: TransactionNesting.detached);
-    }, useTransaction: false);
+    await withTransaction(
+        action: () async {
+          db = Transaction.current.db;
+          await withTransaction(
+              action: () async {
+                ran = true;
+                expect(db, isNot(equals(Transaction.current.db)));
+              },
+              nesting: TransactionNesting.detached);
+        },
+        useTransaction: false);
     expect(ran, isTrue);
     await DbPool().close();
   });
