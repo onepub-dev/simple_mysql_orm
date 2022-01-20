@@ -7,7 +7,9 @@ import 'transaction.dart';
 ///
 /// You still need to do some work yourself !
 ///
-/// To setup a multi-tenant system you must
+/// Refer to the manual for details.
+/// https://sorm.noojee.dev
+///
 /// Runs [action] with all db access scoped to only those records
 /// owned by the tenant.
 ///

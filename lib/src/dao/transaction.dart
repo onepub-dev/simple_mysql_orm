@@ -26,17 +26,20 @@ import 'shared_pool.dart';
 /// of the db changes associated with the transaction until the transaction
 /// is committed.
 ///
-/// MySQL does not allow nested transaction, therefore if you attempt
-/// to nest a transation a [NestedTransactionException] is thrown unless...
+/// MySQL does NOT allow nested transaction, therefore if you attempt
+/// to nest a transation all updates will occur within the same
+/// transaction.
 ///
-/// Thre are some circumstances where you may want to call [withTransaction]
+/// Thre are some circumstances where you may want to control
+/// what occurs when you  call [withTransaction]
 /// within the scope of an existing [withTransaction] call.
 ///
 /// 1) you have a method that may or may not be called within the scope of an
 /// existing [withTransaction] call.
-/// In this case pass [nesting] = [TransactionNesting.nested].
+/// In this case pass [nesting] = [TransactionNesting.nested]
+/// (which is the default)
 ///
-/// If you code is called within the scope of an existing [withTransaction]
+/// If your code is called within the scope of an existing [withTransaction]
 /// call then it will be attached to the same [Db] connection and the
 /// same transaction. This is still NOT a nested MYSQL transaction and
 /// if you transaction fails the outer one will also fail.
@@ -53,11 +56,19 @@ import 'shared_pool.dart';
 /// will be started. You need to be careful that you don't create a live
 /// lock (two transactions viaing for the same resources).
 ///
+/// 3) You want to ensure that you don't accidently nest a transaction.
+///
+/// Pass in [TransactionNesting.notAllowed].
+///
+/// This isn't recommended simply because its hard to enforce within
+/// your code base. [TransactionNesting.detached] is probably what you
+/// really want to use.
+///
 /// [useTransaction] is intended for debugging purposes.
 /// By setting [useTransaction] any db changes are visible
 /// as soon as the occur rather than only once the transaction
 /// completes. So this option allows you to inspect the db
-/// as updates occur.
+/// as updates occur when running tests.
 ///
 /// For most operations you don't provide a [DbPool] and the
 /// transaction obtains one by calling [DbPool()].

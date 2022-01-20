@@ -1,3 +1,5 @@
+import 'package:meta/meta.dart';
+
 import '../../simple_mysql_orm.dart';
 
 abstract class DaoTenant<E extends EntityTenant<E>> extends Dao<E> {
@@ -102,6 +104,7 @@ abstract class DaoTenant<E extends EntityTenant<E>> extends Dao<E> {
     }
   }
 
+  @protected
   @override
   void prepareInsert(FieldList fields, List<String?> values) {
     if (!Tenant.inTenantBypassScope) {
