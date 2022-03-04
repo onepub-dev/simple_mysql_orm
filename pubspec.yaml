@@ -1,5 +1,5 @@
 name: simple_mysql_orm
-version: 3.0.0
+version: 3.0.1
 description: A simple ORM wrapper for mysql with Transaction support.
 repository: https://github.com/bsutton/simple_mysql_orm
 environment: 

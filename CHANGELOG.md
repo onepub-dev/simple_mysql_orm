@@ -1,3 +1,7 @@
+# 3.0.1
+- Made the field keys caseinsenstive as mysql column names are case insensitive.
+- spelling.
+
 # 3.0.0-beta.3
 - BREAKING: renamed querySingle to queryColumn. Created new querySingle which returns a single row of columns.
 - BREAKING: changed the tableName named argument on DaoTenant to a positional argument for consistency with the Dao class.
