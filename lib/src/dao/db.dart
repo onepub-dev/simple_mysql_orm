@@ -214,13 +214,6 @@ Error: ${e.message}''', e.errorNumber);
   }
 }
 
-class MySQLException implements Exception {
-  MySQLException(this.message);
-  String message;
-  @override
-  String toString() => message;
-}
-
 abstract class Transactionable {
   int get id;
   bool get inTransaction;
