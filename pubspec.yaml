@@ -20,5 +20,5 @@ dependencies:
 dev_dependencies: 
   lint_hard: ^1.0.0
   test: ^1.19.5
-exectuables: 
-  build_dao: null
+executables: 
+  build_dao: 
