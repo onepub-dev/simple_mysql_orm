@@ -1,11 +1,17 @@
 import 'dart:convert';
 
+import 'package:collection/collection.dart';
 import 'package:date_time/date_time.dart';
 import 'package:money2/money2.dart';
 
 class Row {
-  Row(this.fields);
-  Map<String, dynamic> fields;
+  Row(Map<String, dynamic> fields) {
+    this.fields =
+        CanonicalizedMap<String, String, dynamic>((key) => key.toUpperCase());
+
+    this.fields.addAll(fields);
+  }
+  late final CanonicalizedMap<String, String, dynamic> fields;
 
   /// convert the field with [name] to a string.
   String asString(String name) => fields[name].toString();
