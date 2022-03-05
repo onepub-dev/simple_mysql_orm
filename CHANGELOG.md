@@ -1,3 +1,6 @@
+# 3.0.2
+- changed the log levels to reduce sperious logging.
+
 # 3.0.1
 - Made the field keys caseinsenstive as mysql column names are case insensitive.
 - spelling.
