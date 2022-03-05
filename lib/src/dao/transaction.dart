@@ -218,7 +218,7 @@ class Transaction<R> {
   /// as updates occur.
   Future<R> run(Future<R> Function() action,
       {required String? debugName}) async {
-    logger.info(() => 'Start transaction($id db: ${db.id} '
+    logger.finer(() => 'Start transaction($id db: ${db.id} '
         'isolate: ${Service.getIsolateID(Isolate.current)}): '
         'useTransaction: $useTransaction '
         'debugName: ${debugName ?? 'none'}');
@@ -226,7 +226,7 @@ class Transaction<R> {
       /// run using a transaction
       final result = await db.transaction(() async => action());
       _commited = true;
-      logger.info(() =>
+      logger.finer(() =>
           'End transaction($id db: ${db.id}): useTransaction: $useTransaction '
           'debugName: ${debugName ?? 'none'}');
       return result;
@@ -234,7 +234,7 @@ class Transaction<R> {
       // run without a transaction
       final result = await action();
       _commited = true;
-      logger.info(() =>
+      logger.finer(() =>
           'End transaction($id db: ${db.id}): useTransaction: $useTransaction '
           'debugName: ${debugName ?? 'none'}');
       return result;

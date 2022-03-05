@@ -65,7 +65,7 @@ class SharedPool<T extends Transactionable> implements Pool<T> {
     final n = await manager.open();
     final conn = ConnectionWrapper._(this, n);
     _pool[conn] = false;
-    logger.info(() => 'Created new connection: ${conn.wrapped.id}');
+    logger.finer(() => 'Created new connection: ${conn.wrapped.id}');
 
     return conn;
   }
@@ -86,7 +86,7 @@ class SharedPool<T extends Transactionable> implements Pool<T> {
       /// we need to wait for a connection to become available
       available = Completer<bool>();
       // wait for a connection to become available
-      logger.info(() => 'awaiting connection');
+      logger.finer(() => 'awaiting connection');
       await available.future;
       return _allocate(_findUnusedConnection()!);
     }
@@ -108,13 +108,13 @@ class SharedPool<T extends Transactionable> implements Pool<T> {
   /// We release one connection every minute provided
   /// it hasn't been used for at least a minute;
   void _releaseExcess() {
-    logger.fine(() => 'releaseExcess called');
+    logger.finer(() => 'releaseExcess called');
     if (_pool.length > minSize) {
-      logger.fine(() => 'Found potentional connections to release');
+      logger.finer(() => 'Found potentional connections to release');
       final oneMinuteAgo = DateTime.now().subtract(excessDuration);
       for (final conn in _pool.keys) {
         if (_pool[conn] == true) {
-          logger.fine(() => 'connection ${conn.wrapped.id} in use');
+          logger.finer(() => 'connection ${conn.wrapped.id} in use');
 
           /// connection is in use.
           continue;
@@ -124,7 +124,7 @@ class SharedPool<T extends Transactionable> implements Pool<T> {
 
           try {
             manager.close(conn.wrapped);
-            logger.info(() =>
+            logger.finer(() =>
                 'removed from pool unused connection: ${conn.wrapped.id}');
             // ignore: avoid_catches_without_on_clauses
           } catch (e, st) {
@@ -149,13 +149,13 @@ class SharedPool<T extends Transactionable> implements Pool<T> {
     /// tell anyone trying to obtain a connection
     /// that we now have some available.
     if (!available.isCompleted) {
-      logger.info(() => 'flagged connections available');
+      logger.finer(() => 'flagged connections available');
       available.complete(true);
     }
   }
 
   Future<ConnectionWrapper<T>> _allocate(ConnectionWrapper<T> conn) async {
-    logger.info(() => 'obtained connection ${conn.wrapped.id}');
+    logger.finer(() => 'obtained connection ${conn.wrapped.id}');
 
     /// mark conn as in use before we call await so
     /// that another async method can't obtain it.
@@ -171,7 +171,7 @@ class SharedPool<T extends Transactionable> implements Pool<T> {
   }
 
   void _deallocate(ConnectionWrapper<T> conn) {
-    logger.info(() => 'released connection ${conn.wrapped.id}');
+    logger.finer(() => 'released connection ${conn.wrapped.id}');
 
     if (conn.wrapped.inTransaction) {
       throw StateError('Attempted to release a connection ${conn.wrapped.id} '
@@ -276,7 +276,7 @@ class SharedPool<T extends Transactionable> implements Pool<T> {
 
   void _removeBadConnection(ConnectionWrapper<T>? conn) {
     if (conn != null) {
-      logger.info(() => 'Found bad connection: ${conn.id}. Replacing it.');
+      logger.warning(() => 'Found bad connection: ${conn.id}. Replacing it.');
       // remove the invalid connection
       _pool.remove(conn);
     }

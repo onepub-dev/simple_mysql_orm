@@ -140,7 +140,7 @@ void main() {
         overrideExcessDuration: const Duration(seconds: 2));
 
     for (var i = 0; i < 100; i++) {
-      // logger.info(() => 'obtaining connection')
+      // logger.finer(() => 'obtaining connection')
       final db = await pool.obtain();
       await pool.release(db);
       await Future.delayed(const Duration(seconds: 10), () => null);

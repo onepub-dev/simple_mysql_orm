@@ -110,12 +110,12 @@ class Db implements Transactionable {
   ///   where id = ?', [userId]);
   /// ```
   Future<g.Results> query(String query, [ValueList? values]) async {
-    logger.info(() => 'Db: $id qid: $queryCount ${_colour(query)}, '
+    logger.fine(() => 'Db: $id qid: $queryCount ${_colour(query)}, '
         'values:[${_expandValues(values)}]');
 
     try {
       final results = await connection.query(query, values);
-      logger.info(() => 'Db: $id qid: $queryCount '
+      logger.fine(() => 'Db: $id qid: $queryCount '
           'Rows encountered: ${results.affectedRows ?? results.length}');
       queryCount++;
       return results;

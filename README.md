@@ -114,7 +114,7 @@ import 'model/package.dart';
 
 Future<void> main() async {
   /// Configure the logger to output each sql command.
-  Logger.root.level = Level.INFO;
+  Logger.root.level = Level.FINE;
   Logger.root.onRecord.listen((record) {
     print('${record.level.name}: ${record.time}: ${record.message}');
   });
@@ -367,7 +367,7 @@ all tenants.
 
 You will also likely need to access a User table in both tenant and tenant by pass mode.
 
-During the login process you won't know the tenant util you do a query of the User table.
+During the log in process you won't know the tenant util you do a query of the User table.
 However in normal operation the User table should always be access as a tenant table.
 
 For these scenarios you use `withTenantBypass`.
@@ -423,7 +423,9 @@ For those types when you that might not be the case you can use the following:
 
     }
 
-
+# logging
+To output each query sent to the db set logging to FINE.
+To get all db interactions so logging to FINER.
 
 
 
@@ -440,7 +442,7 @@ dart pub global activate simple_mysql_orm
 build_dao --host <host> --port <port> --database <db> --user <user> --password <password> --table <table>
 ```
 
-The above will generate to files in the current directory
+The above will generate files in the current directory
 
 * <table>.dart
 * dao_<table>.dart
