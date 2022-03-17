@@ -1,3 +1,6 @@
+# 3.0.4
+- upgraded to dcli 1.17.3
+
 # 3.0.2
 - changed the log levels to reduce sperious logging.
 
