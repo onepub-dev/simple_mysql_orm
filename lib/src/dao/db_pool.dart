@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:dcli_core/dcli_core.dart';
+import 'package:dcli/dcli.dart';
 import 'package:galileo_mysql/galileo_mysql.dart';
 import 'package:settings_yaml/settings_yaml.dart';
 

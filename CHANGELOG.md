@@ -1,3 +1,6 @@
+# 3.0.5
+fixed a transitive import on dcli_core.
+
 # 3.0.4
 - upgraded to dcli 1.17.3
 
