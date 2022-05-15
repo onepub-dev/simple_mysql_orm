@@ -5,7 +5,7 @@ import 'package:collection/collection.dart';
 import 'package:dcli/dcli.dart';
 
 import 'package:galileo_mysql/galileo_mysql.dart' as g;
-import 'package:galileo_mysql/galileo_mysql.dart';
+
 import 'package:logging/logging.dart';
 import 'package:scope/scope.dart';
 
@@ -119,7 +119,7 @@ class Db implements Transactionable {
           'Rows encountered: ${results.affectedRows ?? results.length}');
       queryCount++;
       return results;
-    } on MySqlException catch (e) {
+    } on g.MySqlException catch (e) {
       /// We don't want to use the stack trace from the exception
       /// as it is a useless async callback that does the results
       /// processing and gives the user no context.
