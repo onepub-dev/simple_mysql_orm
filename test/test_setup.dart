@@ -104,5 +104,3 @@ Member createMember(String email) {
 
   return member;
 }
-
-Future<void> _createSchema() async {}
