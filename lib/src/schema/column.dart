@@ -7,13 +7,13 @@ import '../util/enum_helper.dart';
 /// 'show columns from <table>'
 class Column {
   Column.fromRow(Row row) {
-    name = row.fields['Field'] as String;
-    typeDetails = _parseType(row.fields['Type'].toString(), name);
+    name = row.asString('Field');
+    typeDetails = _parseType(row.asString('Type'), name);
     type = typeDetails.type;
     size = typeDetails.size;
-    allowNull = (row.fields['Null'] as String) == 'YES';
-    key = KeyEx.fromName(row.fields['Key'] as String);
-    autoIncrement = (row.fields['Extra'] as String) == 'auto_increment';
+    allowNull = row.asString('Null') == 'YES';
+    key = KeyEx.fromName(row.asString('Key'));
+    autoIncrement = (row.asString('Extra')) == 'auto_increment';
   }
 
   late String name;

@@ -454,3 +454,8 @@ You can exclude the generation of the dao file by passing the `--no-dao` flag.
 You can control the name of the output files by passing --file <filename>.
 The dao filename will be `dao_<filename>`
 
+# Testing
+The unit tests expect an pre-existing schema. To create the schema run:
+
+```
+dmysql restore smo &lt; schema\createv3.sql

@@ -14,6 +14,18 @@ void main() {
       print('${record.level.name}: ${record.time}: ${record.message}');
     });
   });
+
+  test('db pool - obtain/release', () async {
+    final pool = DbPool.fromSettings(
+        pathToSettings: join('test', 'settings.yaml'),
+        overrideMax: 3,
+        overrideMin: 1,
+        overrideExcessDuration: const Duration(seconds: 2000));
+
+    final db = await pool.obtain();
+    return pool.release(db);
+  });
+
   test('db pool wait', () async {
     final pool = DbPool.fromSettings(
         pathToSettings: join('test', 'settings.yaml'),

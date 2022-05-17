@@ -8,11 +8,11 @@ dependencies:
   collection: ^1.15.0
   date_time: ^0.6.0
   dcli: ^1.17.3
-  galileo_mysql: ^3.0.0
   intl: ^0.17.0
   logging: ^1.0.2
   meta: ^1.7.0
   money2: ^3.1.2
+  mysql_client: ^0.0.16
   recase: ^4.0.0
   scope: ^2.2.0
   settings_yaml: ^3.3.1

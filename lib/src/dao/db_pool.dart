@@ -1,10 +1,10 @@
 import 'dart:async';
 
 import 'package:dcli/dcli.dart';
-import 'package:galileo_mysql/galileo_mysql.dart';
 import 'package:settings_yaml/settings_yaml.dart';
 
 import '../exceptions.dart';
+import '../util/connection_settings.dart';
 import 'db.dart';
 import 'shared_pool.dart';
 import 'transaction.dart';
@@ -46,11 +46,12 @@ class DbPool {
           int? overrideMin,
           Duration? overrideExcessDuration}) =>
       DbPool._fromSettingsWithOverrides(
-          pathToSettings: pathToSettings,
-          overrideMax: overrideMax,
-          overrideMin: overrideMin,
-          overrideExcessDuration: overrideExcessDuration,
-          useDatabase: false);
+        pathToSettings: pathToSettings,
+        overrideMax: overrideMax,
+        overrideMin: overrideMin,
+        overrideExcessDuration: overrideExcessDuration,
+        useDatabase: false,
+      );
 
   /// You can override the min no. of connections in the pool by passing in
   /// [overrideMin]. This is mainly for unit testing.
@@ -62,10 +63,11 @@ class DbPool {
           int? overrideMin,
           Duration? overrideExcessDuration}) =>
       _self = DbPool._fromSettingsWithOverrides(
-          pathToSettings: pathToSettings,
-          overrideMax: overrideMax,
-          overrideMin: overrideMin,
-          overrideExcessDuration: overrideExcessDuration);
+        pathToSettings: pathToSettings,
+        overrideMax: overrideMax,
+        overrideMin: overrideMin,
+        overrideExcessDuration: overrideExcessDuration,
+      );
 
   factory DbPool._fromSettingsWithOverrides(
       {required String pathToSettings,
@@ -89,6 +91,8 @@ class DbPool {
     final minSize = settings.asInt(DbPool.mysqMinPoolSizeKey, defaultValue: 5);
     final maxSize = settings.asInt(DbPool.mysqMaxPoolSizeKey, defaultValue: 50);
 
+    final useSSL = settings.asBool(DbPool.useSSLKey);
+
     return DbPool._internal(
         host: host,
         port: port,
@@ -97,7 +101,8 @@ class DbPool {
         database: useDatabase ? database : null,
         minSize: overrideMin ?? minSize,
         maxSize: overrideMax ?? maxSize,
-        excessDuration: overrideExcessDuration ?? const Duration(minutes: 1));
+        excessDuration: overrideExcessDuration ?? const Duration(minutes: 1),
+        useSSL: useSSL);
   }
 
   factory DbPool.fromArgs({
@@ -108,6 +113,7 @@ class DbPool {
     int port = 3306,
     int minSize = 5,
     int maxSize = 50,
+    bool useSSL = true,
   }) =>
       _self = DbPool._internal(
           host: host,
@@ -116,46 +122,51 @@ class DbPool {
           password: password,
           database: database,
           minSize: minSize,
-          maxSize: maxSize);
+          maxSize: maxSize,
+          useSSL: useSSL);
 
   factory DbPool.fromEnv() {
     final user = Db.getEnv(Db.mysqlUsernameKey);
     final password = Db.getEnv(Db.mysqlPasswordKey);
     final minSize = Db.getEnv(DbPool.mysqMinPoolSizeKey, defaultValue: '5');
     final maxSize = Db.getEnv(DbPool.mysqMaxPoolSizeKey, defaultValue: '50');
+    final useSSL = Db.getEnv(DbPool.useSSLKey, defaultValue: 'true');
 
     _self = DbPool._internal(
-      host: env[Db.mysqlHostKey] ?? 'localhost',
-      port: int.tryParse(env[Db.mysqlPortKey] ?? '3306') ?? 3306,
-      user: user,
-      password: password,
-      database: env[Db.mysqlDatabaseKey] ?? 'onepub',
-      minSize: int.tryParse(minSize) ?? 5,
-      maxSize: int.tryParse(maxSize) ?? 50,
-    );
+        host: env[Db.mysqlHostKey] ?? 'localhost',
+        port: int.tryParse(env[Db.mysqlPortKey] ?? '3306') ?? 3306,
+        user: user,
+        password: password,
+        database: env[Db.mysqlDatabaseKey] ?? 'onepub',
+        minSize: int.tryParse(minSize) ?? 5,
+        maxSize: int.tryParse(maxSize) ?? 50,
+        useSSL: useSSL.trim().toLowerCase() == 'true');
     return _self!;
   }
 
-  DbPool._internal(
-      {required String host,
-      required int port,
-      required String user,
-      required String password,
-      required int minSize,
-      required int maxSize,
-      String? database,
-      Duration excessDuration = const Duration(minutes: 1)})
-      : _database = database,
+  DbPool._internal({
+    required String host,
+    required int port,
+    required String user,
+    required String password,
+    required int minSize,
+    required int maxSize,
+    required bool useSSL,
+    String? database,
+    Duration excessDuration = const Duration(minutes: 1),
+  })  : _database = database,
         pool = SharedPool(
-            MySqlConnectonManager(ConnectionSettings(
-                host: host,
-                port: port,
-                user: user,
-                password: password,
-                db: database)),
-            minSize: minSize,
-            maxSize: maxSize,
-            excessDuration: excessDuration);
+          MySqlConnectonManager(ConnectionSettings(
+              host: host,
+              port: port,
+              user: user,
+              password: password,
+              db: database,
+              useSSL: useSSL)),
+          minSize: minSize,
+          maxSize: maxSize,
+          excessDuration: excessDuration,
+        );
 
   static DbPool? _self;
 
@@ -189,6 +200,8 @@ class DbPool {
 
   static String mysqMaxPoolSizeKey = 'mysql_max_pool_size';
   static String mysqMinPoolSizeKey = 'mysql_min_pool_size';
+
+  static String useSSLKey = 'mysql_use_ssl';
 
   /// Runs action passing in a [Db] from the pool
   Future<T> withDb<T>({required Future<T> Function(Db db) action}) async {

@@ -287,8 +287,8 @@ Future<List<Row>> tquery(String sql) async {
   final results = await Transaction.current.db.query(sql);
 
   final rows = <Row>[];
-  for (final results in results) {
-    rows.add(Row(results.fields));
+  for (final row in results.rows) {
+    rows.add(Row(row));
   }
   return rows;
 }

@@ -55,7 +55,7 @@ Future<bool> hasForeignKey(String foreignKeyName) async {
   AND OBJECTPROPERTY(o.object_id, N'IsForeignKey') = 1)''';
 
   final results = await Transaction.current.db.query(sql);
-  return results.isNotEmpty;
+  return results.rows.isNotEmpty;
 }
 
 Future<void> dropDatabase(String databaseName) async {
@@ -109,7 +109,7 @@ WHERE SCHEMA_NAME = '$databaseName'
 ''';
 
   final result = await Transaction.current.db.query(sql);
-  return result.isNotEmpty;
+  return result.rows.isNotEmpty;
 }
 
 /// Allows you to update the database with foreign key constraints

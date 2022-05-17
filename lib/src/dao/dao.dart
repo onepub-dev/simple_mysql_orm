@@ -3,9 +3,9 @@
 import 'dart:convert';
 
 import 'package:date_time/date_time.dart';
-import 'package:galileo_mysql/galileo_mysql.dart' hide MySqlConnection;
 import 'package:intl/intl.dart';
 import 'package:meta/meta.dart';
+import 'package:mysql_client/mysql_client.dart';
 
 import '../../simple_mysql_orm.dart';
 import '../builder/builder.dart';
@@ -64,8 +64,8 @@ abstract class Dao<E> {
     final results = await db.query(query, values);
 
     final rows = <O>[];
-    for (final results in results) {
-      rows.add(adaptor(Row(results.fields)));
+    for (final row in results.rows) {
+      rows.add(adaptor(Row(row)));
     }
     return rows;
   }
@@ -97,19 +97,19 @@ when it was expected to exist''');
     validate(query);
 
     final results = await db.query(query, values);
-    if (results.isEmpty) {
+    if (results.rows.isEmpty) {
       return null;
     }
 
-    if (results.length != 1) {
+    if (results.rows.length != 1) {
       throw TooManyResultsException('Multiple rows from ${query}s matched '
           'when only one was expected.');
     }
 
-    final row = results.first;
+    final row = results.rows.first;
 
-    final value = convert(row.fields[fieldName] as String);
-    return value;
+    final value = Row(row).tryValue(fieldName);
+    return value == null ? null : convert(value);
   }
 
   /// Perform a query with a where clause [fieldName] = [fieldValue]
@@ -206,10 +206,10 @@ when it was expected to exist''');
     return query(sql, values);
   }
 
-  List<E> fromResults(Results results) {
+  List<E> fromResults(IResultSet results) {
     final rows = <E>[];
-    for (final results in results) {
-      rows.add(callFromRow(Row(results.fields)));
+    for (final row in results.rows) {
+      rows.add(callFromRow(Row(row)));
     }
     return rows;
   }
@@ -229,7 +229,7 @@ when it was expected to exist''');
 
     final result = await db.query(sql, values);
 
-    return result.insertId!;
+    return result.lastInsertID.toInt();
   }
 
   Future<void> update(Entity<E> entity) async {

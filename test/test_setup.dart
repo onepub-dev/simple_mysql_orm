@@ -1,6 +1,7 @@
 import 'package:dcli/dcli.dart';
 import 'package:logging/logging.dart';
 import 'package:simple_mysql_orm/simple_mysql_orm.dart';
+import 'package:test/test.dart';
 
 import 'src/dao/dao_member.dart';
 import 'src/dao/dao_publisher.dart';
@@ -16,6 +17,7 @@ Future<void> testSetup() async {
         pathToSettings:
             join(DartProject.self.pathToProjectRoot, 'test', 'settings.yaml'));
   }
+
   await _cleanUpDb();
 }
 
@@ -23,6 +25,10 @@ Future<void> _cleanUpDb() async {
   await withTenantByPass(action: () async {
     await withTransaction(
         action: () async {
+          /// if the db doesn't exist then run
+          /// dmysql restore smo schema createv2.sql
+          expect(await existsDatabase('smo'), true);
+
           /// we need to remove references to members to overcome
           /// foreign key constraints.
           final daoPublisher = DaoPublisher();
@@ -98,3 +104,5 @@ Member createMember(String email) {
 
   return member;
 }
+
+Future<void> _createSchema() async {}

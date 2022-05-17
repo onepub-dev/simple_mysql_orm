@@ -1,9 +1,9 @@
 import 'dart:async';
 import 'dart:io';
 
-import 'package:galileo_mysql/galileo_mysql.dart';
 import 'package:logging/logging.dart';
 import '../exceptions.dart';
+import '../util/my_sql_exception.dart';
 import 'db.dart';
 
 /// Creates a [Pool] whose members can be shared. The pool keeps a record of
@@ -23,6 +23,8 @@ import 'db.dart';
 ///       await conn.release();
 ///     }
 class SharedPool<T extends Transactionable> implements Pool<T> {
+  /// The [excessDuration] sets the duration after which we check
+  /// for any excess connections and disconnect from them.
   SharedPool(
     this.manager, {
     required this.excessDuration,
@@ -180,7 +182,7 @@ class SharedPool<T extends Transactionable> implements Pool<T> {
     _pool[conn] = false;
   }
 
-  /// Checks that the pass [conn] is still valid
+  /// Checks that the passed [conn] is still valid
   /// and if not replaces it with a valid connection.
   /// If a replacement connection can't be obtained
   /// then an exception will be thrown.

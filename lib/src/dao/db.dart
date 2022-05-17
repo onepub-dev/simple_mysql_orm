@@ -4,12 +4,13 @@ import 'dart:math';
 import 'package:collection/collection.dart';
 import 'package:dcli/dcli.dart';
 
-import 'package:galileo_mysql/galileo_mysql.dart' as g;
-
 import 'package:logging/logging.dart';
+import 'package:mysql_client/mysql_client.dart';
 import 'package:scope/scope.dart';
 
 import '../../simple_mysql_orm.dart';
+import '../util/connection_settings.dart';
+import '../util/my_sql_exception.dart';
 
 class Db implements Transactionable {
   // factory Db() {
@@ -22,31 +23,37 @@ class Db implements Transactionable {
     final user = getEnv(mysqlUsernameKey);
     final password = getEnv(mysqlPasswordKey);
 
+    final useSSL =
+        (env[mysqlUseSSLKey] ?? 'true').trim().toLowerCase() == 'true';
+
     return Db._internal(
         host: env[mysqlHostKey] ?? 'localhost',
         port: int.tryParse(env[mysqlPortKey] ?? '3306') ?? 3306,
         user: user,
         password: password,
-        database: env[mysqlDatabaseKey] ?? 'onepub');
+        database: env[mysqlDatabaseKey] ?? 'onepub',
+        useSSL: useSSL);
   }
 
   /// Connects the mysql server without setting the default schema.
   /// You can use this for actions like restoring a database.
   ///
-  factory Db.fromSettingsNoDatabase(g.ConnectionSettings settings) =>
+  factory Db.fromSettingsNoDatabase(ConnectionSettings settings) =>
       Db._internal(
           database: null,
           host: settings.host,
           port: settings.port,
-          user: settings.user!,
-          password: settings.password!);
+          user: settings.user,
+          password: settings.password,
+          useSSL: settings.useSSL);
 
-  factory Db.fromSettings(g.ConnectionSettings settings) => Db._internal(
+  factory Db.fromSettings(ConnectionSettings settings) => Db._internal(
       database: settings.db,
       host: settings.host,
       port: settings.port,
-      user: settings.user!,
-      password: settings.password!);
+      user: settings.user,
+      password: settings.password,
+      useSSL: settings.useSSL);
 
   Db._internal({
     required String host,
@@ -54,10 +61,16 @@ class Db implements Transactionable {
     required String user,
     required String password,
     required String? database,
+    required bool useSSL,
   }) {
     id = _nextId;
-    settings = g.ConnectionSettings(
-        host: host, port: port, user: user, password: password, db: database);
+    settings = ConnectionSettings(
+        host: host,
+        port: port,
+        user: user,
+        password: password,
+        db: database,
+        useSSL: useSSL);
   }
   final logger = Logger('Db');
 
@@ -80,12 +93,13 @@ class Db implements Transactionable {
   static String mysqlDatabaseKey = 'MYSQL_DATABASE';
   static const String mysqlUsernameKey = 'MYSQL_USER';
   static const String mysqlPasswordKey = 'MYSQL_PASSWORD';
+  static const String mysqlUseSSLKey = 'MYSQL_USE_SSL';
 
-  late final g.ConnectionSettings settings;
+  late final ConnectionSettings settings;
 
-  g.MySqlConnection? _connection;
+  MySQLConnection? _connection;
 
-  g.MySqlConnection get connection {
+  MySQLConnection get connection {
     if (_connection == null) {
       throw StateError('You must call connect() first.');
     }
@@ -93,7 +107,7 @@ class Db implements Transactionable {
   }
 
   Future<void> connect() async {
-    _connection = await g.MySqlConnection.connect(settings);
+    _connection = await settings.createConnection();
   }
 
   @override
@@ -109,17 +123,24 @@ class Db implements Transactionable {
   ///  var results = await conn.query('select name, email from users
   ///   where id = ?', [userId]);
   /// ```
-  Future<g.Results> query(String query, [ValueList? values]) async {
+  Future<IResultSet> query(String query, [ValueList? values]) async {
     logger.fine(() => 'Db: $id qid: $queryCount ${_colour(query)}, '
         'values:[${_expandValues(values)}]');
 
     try {
-      final results = await connection.query(query, values);
+      final statement = await connection.prepare(query);
+      List<dynamic> params;
+      if (values == null) {
+        params = <dynamic>[];
+      } else {
+        params = values;
+      }
+      final results = await statement.execute(params);
       logger.fine(() => 'Db: $id qid: $queryCount '
-          'Rows encountered: ${results.affectedRows ?? results.length}');
+          'Rows encountered: ${results.affectedRows}');
       queryCount++;
       return results;
-    } on g.MySqlException catch (e) {
+    } on MySqlException catch (e) {
       /// We don't want to use the stack trace from the exception
       /// as it is a useless async callback that does the results
       /// processing and gives the user no context.
@@ -147,7 +168,7 @@ Error: ${e.message}''', e.errorNumber);
     try {
       late final R result;
       // ignore: avoid_annotating_with_dynamic
-      await _connection!.transaction((dynamic context) async {
+      await _connection!.transactional((dynamic context) async {
         result = await action();
       });
 
@@ -184,15 +205,20 @@ Error: ${e.message}''', e.errorNumber);
   @override
   Future<bool> test() async {
     final results = await query('select 1 as testprob');
-    if (results.length != 1) {
+    if (results.rows.length != 1) {
+      return false;
+    }
+    final row = results.rows.first;
+
+    if (row.numOfColumns != 1) {
       return false;
     }
 
-    final values = results.single.values;
+    final values = row.colAt(0);
     if (values == null || values.length != 1) {
       return false;
     }
-    return values[0] == 1;
+    return values[0] == '1';
   }
 
   String _colour(String query) {
