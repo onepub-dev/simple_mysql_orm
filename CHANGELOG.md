@@ -1,3 +1,6 @@
+# 3.1.0-beta.1
+- converted to using mysql_client as it supports the latest mysql auth. Current beta version has an issue as the mysql_client fails if you try to connect over ssl, set useSSL to false to bypass this issue for the moment.
+
 # 3.0.5
 fixed a transitive import on dcli_core.
 
