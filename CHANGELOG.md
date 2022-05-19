@@ -1,3 +1,7 @@
+# 3.1.0-beta.2
+- Added a log message to indicate a successful connection to mysql after a prior failure.
+- removed unused method.
+
 # 3.1.0-beta.1
 - converted to using mysql_client as it supports the latest mysql auth. Current beta version has an issue as the mysql_client fails if you try to connect over ssl, set useSSL to false to bypass this issue for the moment.
 
