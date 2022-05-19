@@ -197,6 +197,9 @@ class SharedPool<T extends Transactionable> implements Pool<T> {
       try {
         if (_conn != null && await _conn.wrapped.test()) {
           success = true;
+          if (lastError != null) {
+            logger.warning('Connection to MySQL succeeded.');
+          }
           break;
         } else {
           if (_conn != null) {
