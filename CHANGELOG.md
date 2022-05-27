@@ -1,3 +1,6 @@
+# 3.1.0-beta.3
+- Fix: row.tryCustom was calling tryInt rather than tryString to get an initial value causing radix exceptions when the custom value was not an int (the normal case).
+
 # 3.1.0-beta.2
 - Added a log message to indicate a successful connection to mysql after a prior failure.
 - removed unused method.

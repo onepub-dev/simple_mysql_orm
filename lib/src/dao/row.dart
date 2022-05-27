@@ -89,7 +89,7 @@ class Row {
       tryCustom(name, (value) => convertTo(value!)!)!;
 
   T? tryCustom<T>(String name, T? Function(Object? value) convertTo) {
-    final dynamic value = tryInt(name);
+    final dynamic value = tryString(name);
 
     if (value == null) {
       return null;
