@@ -4,7 +4,6 @@
  * Written by Brett Sutton <bsutton@onepub.dev>, Jan 2022
  */
 
-
 import 'package:date_time/date_time.dart';
 
 extension TimeExtension on Time {

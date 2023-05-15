@@ -4,7 +4,6 @@
  * Written by Brett Sutton <bsutton@onepub.dev>, Jan 2022
  */
 
-
 library builder;
 
 import '../../simple_mysql_orm.dart';
@@ -86,8 +85,7 @@ abstract class WhereExpression<E> extends Query<E> {
 }
 
 class OrderBy<E> extends Query<E> {
-  OrderBy(super.builder, this._field, {bool asc = true})
-      : _asc = asc;
+  OrderBy(super.builder, this._field, {bool asc = true}) : _asc = asc;
   final String _field;
   final bool _asc;
 }

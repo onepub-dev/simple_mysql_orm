@@ -4,7 +4,6 @@
  * Written by Brett Sutton <bsutton@onepub.dev>, Jan 2022
  */
 
-
 class MySqlException implements Exception {
   MySqlException(this.message);
   Object? errorNumber;

@@ -4,7 +4,6 @@
  * Written by Brett Sutton <bsutton@onepub.dev>, Jan 2022
  */
 
-
 import 'package:simple_mysql_orm/simple_mysql_orm.dart';
 
 import '../../test_dao/model/publisher.dart';

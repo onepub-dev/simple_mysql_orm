@@ -4,7 +4,6 @@
  * Written by Brett Sutton <bsutton@onepub.dev>, Jan 2022
  */
 
-
 export 'src/dao/dao.dart';
 export 'src/dao/dao_tenant.dart';
 export 'src/dao/db.dart';
