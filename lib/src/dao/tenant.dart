@@ -4,8 +4,8 @@
  * Written by Brett Sutton <bsutton@onepub.dev>, Jan 2022
  */
 
-
 import 'package:scope/scope.dart';
+
 import '../exceptions.dart';
 import '../model/entity.dart';
 import 'transaction.dart';
@@ -40,8 +40,7 @@ Future<T> withTenant<T>(
 /// the results to a single tenant.
 /// It is appropriate to use this for things like cross tenant reporting.
 Future<R> withTenantByPass<R>({required Future<R> Function() action}) async =>
-    await (Scope('withTenantByPass')
-          ..value<bool>(Tenant._bypassTenantKey, true))
+    (Scope('withTenantByPass')..value<bool>(Tenant._bypassTenantKey, true))
         .run(() async => action());
 
 // ignore: avoid_classes_with_only_static_members

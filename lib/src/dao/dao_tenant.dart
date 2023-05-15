@@ -10,12 +10,11 @@ import 'package:meta/meta.dart';
 import '../../simple_mysql_orm.dart';
 
 abstract class DaoTenant<E extends EntityTenant<E>> extends Dao<E> {
-  DaoTenant(String tablename, {required this.tenantFieldName})
-      : super(tablename);
+  DaoTenant(super.tablename, {required this.tenantFieldName});
 
   /// Create a dao object with passed [db]
-  DaoTenant.withDb(Db db, String tableName, {required this.tenantFieldName})
-      : super.withDb(db, tableName);
+  DaoTenant.withDb(super.db, super.tableName, {required this.tenantFieldName})
+      : super.withDb();
 
   String tenantFieldName;
 

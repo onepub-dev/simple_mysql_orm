@@ -4,7 +4,6 @@
  * Written by Brett Sutton <bsutton@onepub.dev>, Jan 2022
  */
 
-
 import 'package:dcli/dcli.dart';
 import '../../simple_mysql_orm.dart';
 
@@ -66,11 +65,12 @@ Future<bool> hasForeignKey(String foreignKeyName) async {
 }
 
 Future<void> dropDatabase(String databaseName) async {
-  await Transaction.current.db.query('drop database $databaseName');
+  await Transaction.current.db.query('drop database if exists $databaseName');
 }
 
 Future<void> createDatabase(String databaseName) async {
-  await Transaction.current.db.query('create database $databaseName');
+  await Transaction.current.db
+      .query('create database  if not exists  $databaseName');
 }
 
 /// Restores a database from a .sql file created by

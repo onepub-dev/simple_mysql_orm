@@ -1,9 +1,10 @@
+// ignore_for_file: avoid_print
+
 /* Copyright (C) S. Brett Sutton - All Rights Reserved
  * Unauthorized copying of this file, via any medium is strictly prohibited
  * Proprietary and confidential
  * Written by Brett Sutton <bsutton@onepub.dev>, Jan 2022
  */
-
 
 import 'package:logging/logging.dart';
 import 'package:settings_yaml/settings_yaml.dart';
@@ -20,7 +21,8 @@ Future<void> main() async {
   });
 
   /// Create  settings file.
-  SettingsYaml.fromString(content: settingsYaml, filePath: 'settings.yaml')
+  await SettingsYaml.fromString(
+          content: settingsYaml, filePath: 'settings.yaml')
       .save();
 
   /// Initialise the db pool
@@ -55,7 +57,7 @@ Future<void> main() async {
     await dao.remove(package);
 
     /// changed my mind
-    Transaction.current.rollback();
+    await Transaction.current.rollback();
   });
 }
 

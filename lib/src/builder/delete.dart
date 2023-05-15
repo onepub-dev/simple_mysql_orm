@@ -4,7 +4,6 @@
  * Written by Brett Sutton <bsutton@onepub.dev>, Jan 2022
  */
 
-
 part of builder;
 
 class Delete<E> {
@@ -44,8 +43,8 @@ class Delete<E> {
       }
       sql.write('order by $field $asc ');
     }
-    print('sql $sql');
-    print('values: $values');
+    // print('sql $sql');
+    // print('values: $values');
     return dao.query(sql.toString(), values);
   }
 }

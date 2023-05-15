@@ -51,8 +51,7 @@ class Where<E> {
 }
 
 class EqualsExpression<E> extends WhereExpression<E> {
-  EqualsExpression(Builder<E> builder, this._field, this._match)
-      : super(builder);
+  EqualsExpression(super.builder, this._field, this._match);
 
   final String _field;
   final String _match;
@@ -65,7 +64,7 @@ class EqualsExpression<E> extends WhereExpression<E> {
 }
 
 class LikeExpression<E> extends WhereExpression<E> {
-  LikeExpression(Builder<E> builder, this._field, this._match) : super(builder);
+  LikeExpression(super.builder, this._field, this._match);
 
   final String _field;
   final String _match;
@@ -78,7 +77,7 @@ class LikeExpression<E> extends WhereExpression<E> {
 }
 
 abstract class WhereExpression<E> extends Query<E> {
-  WhereExpression(Builder<E> builder) : super(builder);
+  WhereExpression(super.builder);
 
   List<Object> get _values;
 
@@ -87,9 +86,8 @@ abstract class WhereExpression<E> extends Query<E> {
 }
 
 class OrderBy<E> extends Query<E> {
-  OrderBy(Builder<E> builder, this._field, {bool asc = true})
-      : _asc = asc,
-        super(builder);
+  OrderBy(super.builder, this._field, {bool asc = true})
+      : _asc = asc;
   final String _field;
   final bool _asc;
 }

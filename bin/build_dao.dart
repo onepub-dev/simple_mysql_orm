@@ -10,6 +10,7 @@
 
 import 'dart:io';
 
+import 'package:args/args.dart';
 import 'package:dcli/dcli.dart' hide Column;
 import 'package:simple_mysql_orm/simple_mysql_orm.dart';
 import 'package:simple_mysql_orm/src/generator/dao.dart';

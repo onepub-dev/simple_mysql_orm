@@ -37,15 +37,15 @@ class DaoPublisher extends Dao<Publisher> {
 }
 
 class AccountDisabledException extends SMOException {
-  AccountDisabledException(String message) : super(message);
+  AccountDisabledException(super.message);
 }
 
 class UnknownMemberException extends SMOException {
-  UnknownMemberException(String message) : super(message);
+  UnknownMemberException(super.message);
 }
 
 class UnknownPublisherException extends SMOException {
-  UnknownPublisherException(String message) : super(message);
+  UnknownPublisherException(super.message);
 }
 
 class SMOException implements Exception {

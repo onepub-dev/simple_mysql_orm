@@ -6,27 +6,27 @@
 
 
 class ConfigurationException extends MySqlORMException {
-  ConfigurationException(String message) : super(message);
+  ConfigurationException(super.message);
 }
 
 class DatabaseIntegrityException extends MySqlORMException {
-  DatabaseIntegrityException(String message) : super(message);
+  DatabaseIntegrityException(super.message);
 }
 
 class IdentityNotSetException extends MySqlORMException {
-  IdentityNotSetException(String message) : super(message);
+  IdentityNotSetException(super.message);
 }
 
 class MissingTenantException extends MySqlORMException {
-  MissingTenantException(String message) : super(message);
+  MissingTenantException(super.message);
 }
 
 class ModelFileExistsException extends MySqlORMException {
-  ModelFileExistsException(String message) : super(message);
+  ModelFileExistsException(super.message);
 }
 
 class DaoFileExistsException extends MySqlORMException {
-  DaoFileExistsException(String message) : super(message);
+  DaoFileExistsException(super.message);
 }
 
 class MySQLException implements Exception {
@@ -45,13 +45,13 @@ class MySqlORMException implements Exception {
 }
 
 class NestedTransactionException extends MySqlORMException {
-  NestedTransactionException(String message) : super(message);
+  NestedTransactionException(super.message);
 }
 
 class TooManyResultsException extends MySqlORMException {
-  TooManyResultsException(String message) : super(message);
+  TooManyResultsException(super.message);
 }
 
 class UnknownEntityIdException extends MySqlORMException {
-  UnknownEntityIdException(String message) : super(message);
+  UnknownEntityIdException(super.message);
 }

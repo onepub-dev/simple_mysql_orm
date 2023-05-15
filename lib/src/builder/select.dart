@@ -4,7 +4,6 @@
  * Written by Brett Sutton <bsutton@onepub.dev>, Jan 2022
  */
 
-
 part of builder;
 
 class Select<E> {
@@ -44,8 +43,8 @@ class Select<E> {
       }
       sql.write('order by $field $asc ');
     }
-    print('sql $sql');
-    print('values: $values');
+    // print('sql $sql');
+    // print('values: $values');
     return dao.query(sql.toString(), values);
   }
 }

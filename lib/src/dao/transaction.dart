@@ -4,7 +4,6 @@
  * Written by Brett Sutton <bsutton@onepub.dev>, Jan 2022
  */
 
-
 import 'dart:developer';
 import 'dart:isolate';
 
@@ -275,7 +274,7 @@ class Transaction<R> {
   //   committed = true;
   // }
 
-  void rollback() {
+  Future<void> rollback() async {
     if (!useTransaction) {
       return;
     }
@@ -283,7 +282,7 @@ class Transaction<R> {
       throw InvalidTransactionStateException('commit has already been called');
     }
 
-    db.rollback();
+    await db.rollback();
   }
 }
 

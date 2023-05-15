@@ -5,10 +5,8 @@
  */
 
 
-@Timeout(Duration(minutes: 10))
-
-import 'package:dcli/dcli.dart';
 import 'package:logging/logging.dart';
+import 'package:path/path.dart';
 import 'package:simple_mysql_orm/simple_mysql_orm.dart';
 import 'package:simple_mysql_orm/src/dao/shared_pool.dart';
 import 'package:test/test.dart';
@@ -18,6 +16,7 @@ void main() {
     // Logger.root.clearListeners();
     Logger.root.level = Level.INFO; // defaults to Level.INFO
     Logger.root.onRecord.listen((record) {
+      // ignore: avoid_print
       print('${record.level.name}: ${record.time}: ${record.message}');
     });
   });
@@ -50,6 +49,7 @@ void main() {
     for (var i = 0; i < 3; i++) {
       final db = await pool.obtain();
       obtained.add(db);
+      // ignore: avoid_print
       print(db.wrapped.id);
     }
     expect(released, isTrue);
@@ -78,6 +78,7 @@ void main() {
     for (var i = 0; i < 3; i++) {
       final db = await pool.obtain();
       obtained.add(db);
+      // ignore: avoid_print
       print(db.wrapped.id);
     }
 

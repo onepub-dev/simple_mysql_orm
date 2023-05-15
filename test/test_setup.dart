@@ -7,6 +7,7 @@
 
 import 'package:dcli/dcli.dart';
 import 'package:logging/logging.dart';
+import 'package:path/path.dart';
 import 'package:simple_mysql_orm/simple_mysql_orm.dart';
 import 'package:test/test.dart';
 
@@ -89,9 +90,11 @@ void initLogger() {
     recordStackTraceAtLevel = Level.SEVERE;
     Logger.root.level = Level.INFO; // defaults to Level.INFO
     Logger.root.onRecord.listen((record) {
+      // ignore: avoid_print
       print('${record.level.name}: ${record.time}:'
           ' ${record.message} : ${record.error}');
       if (record.stackTrace != null) {
+        // ignore: avoid_print
         print(record.stackTrace);
       }
     });

@@ -1,13 +1,15 @@
 @Timeout(Duration(minutes: 3))
+library;
+
 /* Copyright (C) S. Brett Sutton - All Rights Reserved
  * Unauthorized copying of this file, via any medium is strictly prohibited
  * Proprietary and confidential
  * Written by Brett Sutton <bsutton@onepub.dev>, Jan 2022
  */
 
-
-import 'package:dcli/dcli.dart' hide equals;
+import 'package:dcli/dcli.dart';
 import 'package:logging/logging.dart';
+import 'package:path/path.dart' hide equals;
 import 'package:scope/scope.dart';
 import 'package:simple_mysql_orm/simple_mysql_orm.dart';
 import 'package:test/test.dart';
@@ -20,6 +22,7 @@ void main() {
   setUpAll(() {
     Logger.root.level = Level.INFO;
     Logger.root.onRecord.listen((record) {
+      // ignore: avoid_print
       print('${record.level.name}: ${record.time}: ${record.message}');
     });
   });

@@ -4,7 +4,6 @@
  * Written by Brett Sutton <bsutton@onepub.dev>, Jan 2022
  */
 
-
 import 'package:mysql_client/mysql_client.dart';
 import 'package:test/test.dart';
 
@@ -18,9 +17,10 @@ void main() {
         databaseName: 'onepub',
         secure: false);
 
-// actually connect to database
+    // actually connect to database
     await conn.connect();
 
+    // ignore: avoid_print
     print('connected');
   });
 }

@@ -4,11 +4,11 @@
  * Written by Brett Sutton <bsutton@onepub.dev>, Jan 2022
  */
 
-
 import 'dart:async';
 import 'dart:io';
 
 import 'package:logging/logging.dart';
+
 import '../exceptions.dart';
 import '../util/my_sql_exception.dart';
 import 'db.dart';
@@ -116,13 +116,13 @@ class SharedPool<T extends Transactionable> implements Pool<T> {
   /// have not been used and are in excess of [minSize]
   /// We release one connection every minute provided
   /// it hasn't been used for at least a minute;
-  void _releaseExcess() {
+  Future<void> _releaseExcess() async {
     logger.finer(() => 'releaseExcess called');
     if (_pool.length > minSize) {
       logger.finer(() => 'Found potentional connections to release');
       final oneMinuteAgo = DateTime.now().subtract(excessDuration);
       for (final conn in _pool.keys) {
-        if (_pool[conn] == true) {
+        if (_pool[conn] ?? true == true) {
           logger.finer(() => 'connection ${conn.wrapped.id} in use');
 
           /// connection is in use.
@@ -132,7 +132,7 @@ class SharedPool<T extends Transactionable> implements Pool<T> {
           _pool.remove(conn);
 
           try {
-            manager.close(conn.wrapped);
+            await manager.close(conn.wrapped);
             logger.finer(() =>
                 'removed from pool unused connection: ${conn.wrapped.id}');
             // ignore: avoid_catches_without_on_clauses
@@ -253,7 +253,7 @@ class SharedPool<T extends Transactionable> implements Pool<T> {
     final inTransaction = <int>[];
     final notReleased = <int>[];
     for (final conn in _pool.keys) {
-      if (_pool[conn] == true) {
+      if (_pool[conn] ?? false == true) {
         notReleased.add(conn.id);
       } else if (conn.inTransaction) {
         inTransaction.add(conn.id);
