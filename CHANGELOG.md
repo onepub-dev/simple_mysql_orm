@@ -1,3 +1,6 @@
+# 4.0.0
+- updated min sdk to 3.0
+- 
 # 3.1.0-beta.3
 - Fix: row.tryCustom was calling tryInt rather than tryString to get an initial value causing radix exceptions when the custom value was not an int (the normal case).
 
