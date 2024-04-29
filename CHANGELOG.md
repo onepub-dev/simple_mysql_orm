@@ -1,3 +1,6 @@
+# 4.1.0-beta.1
+- upgrade dependencies.
+
 # 4.1.0-alpha.1
 - upgraded to dcli 4.0.0-alpha.1
 
