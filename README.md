@@ -8,15 +8,38 @@ Features:
   * DB connection pool
   * a really crappy builder (help wanted to make this useful)
 
-Currently you need to manually build the bindings between each class and the
-underlying table but it's a fairly simple process.
 
-If you are intersted in getting involved I'm looking to add auto generation of the bindings based on a class and/or db schema.
+# Code Generator
 
+Simple ORM now has a very crude code generator.
+
+It can generate a model and dao class from a database table.
+
+To use the generator
+
+```bash
+dart pub global activate simple_mysql_orm
+build_dao --host <host> --port <port> --database <db> --user <user> --password <password> --table <table>
+```
+
+The above will generate files in the current directory
+
+* `<table>.dart`
+* `dao_<table>.dart`
+
+If either file exists the build will fail.
+
+You can exclude the generation of the dao file by passing the `--no-dao` flag.
+
+You can control the name of the output files by passing --file <filename>.
+The dao filename will be `dao_<filename>`
+
+
+# Example Usage
 Example usage. See the examples directory for the full workings.
 
 For each table you need to create a Data Access Object (dao) which should contain all of your business rules
-and an Entity which shhould just contain the fields of the entity.
+and an Entity which should just contain the fields of the entity.
 
 Dao example:
 ```dart
@@ -353,7 +376,7 @@ We do this via the `withTenant` method.
 ```          
 
 
-## By pass tenant access
+## Bypass tenant access
 
 By default SMO will attempt to check that you always fitler your queries with a tenant id.
 
@@ -365,7 +388,7 @@ the tenant id to restrict the results.
 For example a System Administrator will need access to the Staff Members of
 all tenants.
 
-You will also likely need to access a User table in both tenant and tenant by pass mode.
+You will also likely need to access a User table in both tenant and tenant bypass mode.
 
 During the log in process you won't know the tenant util you do a query of the User table.
 However in normal operation the User table should always be access as a tenant table.
@@ -422,40 +445,19 @@ For those types when you that might not be the case you can use the following:
     {
 
     }
+```    
 
 # logging
 To output each query sent to the db set logging to FINE.
 To get all db interactions so logging to FINER.
 
 
-
-# Code Generator
-
-We now have a very crude code generator.
-
-It can generate a model and dao class from a database table.
-
-To use the generator
-
-```bash
-dart pub global activate simple_mysql_orm
-build_dao --host <host> --port <port> --database <db> --user <user> --password <password> --table <table>
-```
-
-The above will generate files in the current directory
-
-* <table>.dart
-* dao_<table>.dart
-
-If either file exists the build will fail.
-
-You can exclude the generation of the dao file by passing the `--no-dao` flag.
-
-You can control the name of the output files by passing --file <filename>.
-The dao filename will be `dao_<filename>`
-
 # Testing
 The unit tests expect an pre-existing schema. To create the schema run:
 
 ```
-dmysql restore smo &lt; schema\createv3.sql
+dmysql restore smo < schema\createv3.sql
+```
+
+Note: this uses the dmysql tool from the DCli_Scripts package but you
+can use whatever method you like to run an sql script.
