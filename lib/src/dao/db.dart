@@ -9,7 +9,6 @@ import 'dart:math';
 
 import 'package:collection/collection.dart';
 import 'package:dcli/dcli.dart';
-
 import 'package:logging/logging.dart';
 import 'package:mysql_client/mysql_client.dart';
 import 'package:scope/scope.dart';
@@ -37,7 +36,7 @@ class Db implements Transactionable {
         port: int.tryParse(env[mysqlPortKey] ?? '3306') ?? 3306,
         user: user,
         password: password,
-        database: env[mysqlDatabaseKey] ?? 'onepub',
+        database: env[mysqlDatabaseKey] ?? 'smo',
         useSSL: useSSL);
   }
 

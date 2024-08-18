@@ -143,7 +143,7 @@ class DbPool {
         port: int.tryParse(env[Db.mysqlPortKey] ?? '3306') ?? 3306,
         user: user,
         password: password,
-        database: env[Db.mysqlDatabaseKey] ?? 'onepub',
+        database: env[Db.mysqlDatabaseKey] ?? 'smo',
         minSize: int.tryParse(minSize) ?? 5,
         maxSize: int.tryParse(maxSize) ?? 50,
         useSSL: useSSL.trim().toLowerCase() == 'true');
@@ -190,7 +190,7 @@ class DbPool {
 
   /// obtains a wrapper containg a [Db] connection
   Future<ConnectionWrapper<Db>> obtain() async {
-    if (open == false) {
+    if (!open) {
       throw MySqlORMException('The DbPool has already been closed');
     }
     return pool.obtain();
@@ -198,7 +198,7 @@ class DbPool {
 
   /// relase the given connection [wrapper] back into the pool.
   Future<void> release(ConnectionWrapper<Db> wrapper) async {
-    if (open == false) {
+    if (!open) {
       throw MySqlORMException('The DbPool has already been closed');
     }
     await pool.release(wrapper);

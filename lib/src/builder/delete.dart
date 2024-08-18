@@ -38,7 +38,7 @@ class Delete<E> {
       final orderBy = _builder._orderBy!;
       final field = orderBy._field;
       var asc = 'asc';
-      if (orderBy._asc == false) {
+      if (!orderBy._asc) {
         asc = 'desc';
       }
       sql.write('order by $field $asc ');

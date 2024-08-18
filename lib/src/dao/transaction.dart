@@ -153,8 +153,8 @@ class TransactionTestScope {
   int nextDbId = 0;
 
   static ScopeKey<int> transactionTestIdKey =
-      ScopeKey<int>('transactionTestId');
-  static ScopeKey<int> dbTestIdKey = ScopeKey<int>('dbTestId');
+      const ScopeKey<int>('transactionTestId');
+  static ScopeKey<int> dbTestIdKey = const ScopeKey<int>('dbTestId');
 
   Future<R> run<R>(Future<R> Function() action) =>
       (Scope('TransactionTestScope')
@@ -211,7 +211,7 @@ class Transaction<R> {
 
   @visibleForTesting
   // ignore: strict_raw_type
-  static final ScopeKey<Transaction> transactionKey =
+  static const ScopeKey<Transaction> transactionKey =
       // ignore: strict_raw_type
       ScopeKey<Transaction>('transaction');
 
@@ -225,7 +225,7 @@ class Transaction<R> {
   Future<R> run(Future<R> Function() action,
       {required String? debugName}) async {
     logger.finer(() => 'Start transaction($id db: ${db.id} '
-        'isolate: ${Service.getIsolateID(Isolate.current)}): '
+        'isolate: ${Service.getIsolateId(Isolate.current)}): '
         'useTransaction: $useTransaction '
         'debugName: ${debugName ?? 'none'}');
     if (useTransaction) {

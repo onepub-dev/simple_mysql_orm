@@ -84,7 +84,7 @@ const testTeamName = 'The cool team';
 
 bool loggerInitialised = false;
 void initLogger() {
-  if (loggerInitialised == false) {
+  if (!loggerInitialised) {
     loggerInitialised = true;
     recordStackTraceAtLevel = Level.SEVERE;
     Logger.root.level = Level.INFO; // defaults to Level.INFO

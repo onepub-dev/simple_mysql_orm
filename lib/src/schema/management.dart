@@ -84,7 +84,7 @@ Future<void> restoreDatabase(
     {required String databaseName,
     required String pathToBackup,
     required bool thisWillDestroyMyDb}) async {
-  if (thisWillDestroyMyDb != true) {
+  if (!thisWillDestroyMyDb) {
     throw MySqlORMException(
         'You must call this function with thisWillDestroyMyDb = true');
   }

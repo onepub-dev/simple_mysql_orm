@@ -48,10 +48,10 @@ class Tenant {
   /// On a multi-tenant system this key is used to
   /// inject the tenant id.
   /// Use the [withTenant] function to inject the value.
-  static final ScopeKey<int> tenantIdKey = ScopeKey<int>('tenantIdKey');
+  static const ScopeKey<int> tenantIdKey = ScopeKey<int>('tenantIdKey');
 
   ///
-  static final ScopeKey<bool> _bypassTenantKey =
+  static const ScopeKey<bool> _bypassTenantKey =
       ScopeKey<bool>('bypassTenantKey');
 
   // static String get tenantFieldName => Scope.use(tenantFieldKey);
@@ -61,7 +61,7 @@ class Tenant {
   /// called [withTenantByPass].
   static bool get inTenantBypassScope =>
       Scope.hasScopeKey<bool>(_bypassTenantKey) &&
-      use(_bypassTenantKey) == true;
+      use(_bypassTenantKey);
 
   /// True if we are in tenant mode as the user called [withTenant]
   /// and we have not been bypassed.

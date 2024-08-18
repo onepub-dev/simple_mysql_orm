@@ -14,7 +14,7 @@ void main() {
         port: 3306,
         userName: 'root',
         password: 'the cat lives here',
-        databaseName: 'onepub',
+        databaseName: 'smo',
         secure: false);
 
     // actually connect to database

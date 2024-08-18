@@ -122,7 +122,7 @@ class SharedPool<T extends Transactionable> implements Pool<T> {
       logger.finer(() => 'Found potentional connections to release');
       final oneMinuteAgo = DateTime.now().subtract(excessDuration);
       for (final conn in _pool.keys) {
-        if (_pool[conn] ?? true == true) {
+        if (_pool[conn] ?? true) {
           logger.finer(() => 'connection ${conn.wrapped.id} in use');
 
           /// connection is in use.
@@ -253,7 +253,7 @@ class SharedPool<T extends Transactionable> implements Pool<T> {
     final inTransaction = <int>[];
     final notReleased = <int>[];
     for (final conn in _pool.keys) {
-      if (_pool[conn] ?? false == true) {
+      if (_pool[conn] ?? false) {
         notReleased.add(conn.id);
       } else if (conn.inTransaction) {
         inTransaction.add(conn.id);

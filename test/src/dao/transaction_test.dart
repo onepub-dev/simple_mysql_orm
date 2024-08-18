@@ -111,8 +111,7 @@ void main() {
         action: () async {
           ran = true;
           expect(Scope.hasScopeKey(Transaction.transactionKey), isTrue);
-        },
-        nesting: TransactionNesting.nested);
+        });
     expect(ran, isTrue);
     await DbPool().close();
   });
@@ -125,8 +124,7 @@ void main() {
           action: () async {
             expect(db, equals(Transaction.current.db));
             ran = true;
-          },
-          nesting: TransactionNesting.nested);
+          });
     });
     expect(ran, isTrue);
     await DbPool().close();
