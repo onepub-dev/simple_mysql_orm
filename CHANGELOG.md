@@ -1,3 +1,6 @@
+# 5.0.1
+- upgraded to dcli 7.x
+
 # 5.0.0
 - updated the readme to highlight that we have a code generator.
 - Upgraded to dcli 6.x and upped the base dart version to 3.5 Fixed resulting lints fro upgrading to lint_hard 5.x change the default db name (used by testing) to smo - we probably shouldn't have a default db name but rather throw.
