@@ -169,46 +169,6 @@ class Db implements Transactionable {
     }
   }
 
-  /// PRIVATE: the old `query` (kept for internal/simple DML usage).
-  Future<IResultSet> _query(String query, [ValueList? values]) async {
-    logger.fine(() => 'Db: $id qid: $_localQueryCount ${_colour(query)}, '
-        'values:[${_expandValues(values)}]');
-
-    PreparedStmt? stmt;
-    try {
-      if (values == null || values.isEmpty) {
-        final rs = await connection.execute(query);
-        _localQueryCount++;
-        queryCount++;
-        return rs;
-      }
-
-      stmt = await connection.prepare(query);
-      final rs = await stmt.execute(values);
-      _localQueryCount++;
-      queryCount++;
-      return rs;
-    } on MySqlException catch (e) {
-      final userStack = StackTrace.current;
-      logger.severe(
-        'Db: $id qid: $_localQueryCount ${_colour(query)}, '
-        'values:[${_expandValues(values)}]\n'
-        'Error ${e.errorNumber}: ${e.message}',
-        e,
-        userStack,
-      );
-      Error.throwWithStackTrace(e, userStack);
-    } finally {
-      if (stmt != null) {
-        try {
-          await stmt.deallocate();
-          // ignore all errors as we are in a finally
-          // ignore: avoid_catches_without_on_clauses
-        } catch (_) {}
-      }
-    }
-  }
-
   static String getEnv(String key, {String? defaultValue}) {
     final value = env[key] ?? defaultValue;
     if (value == null) {
@@ -254,8 +214,7 @@ class Db implements Transactionable {
   }
 
   @override
-  Future<bool> test()  =>
-      withResults('select 1 as testprob', action: (rs) {
+  Future<bool> test() => withResults('select 1 as testprob', action: (rs) {
         if (rs.rows.length != 1) {
           return false;
         }
@@ -287,10 +246,6 @@ class Db implements Transactionable {
     }
   }
 }
-
-/// NEW: public static façade that hides the instance `_query`.
-Future<IResultSet> query(Db db, String query, [ValueList? values]) =>
-    db._query(query, values);
 
 abstract class Transactionable {
   int get id;

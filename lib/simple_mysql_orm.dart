@@ -6,7 +6,7 @@
 
 export 'src/dao/dao.dart';
 export 'src/dao/dao_tenant.dart';
-export 'src/dao/db.dart' hide query;
+export 'src/dao/db.dart';
 export 'src/dao/db_pool.dart';
 export 'src/dao/row.dart';
 export 'src/dao/tenant.dart';
