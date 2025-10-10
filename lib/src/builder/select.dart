@@ -4,15 +4,16 @@
  * Written by Brett Sutton <bsutton@onepub.dev>, Jan 2022
  */
 
-part of builder;
+part of 'builder.dart';
 
 class Select<E> {
-  Select(this._builder);
   final Builder<E> _builder;
+
+  Select(this._builder);
 
   Where<E> where() => _builder._where = Where<E>(_builder);
 
-  Future<List<E>> _query() async {
+  Future<List<E>> _query() {
     final dao = _builder.dao;
     final table = dao.getTablename();
 

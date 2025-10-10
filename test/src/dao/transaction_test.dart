@@ -22,6 +22,7 @@ void main() {
   setUpAll(() {
     Logger.root.level = Level.INFO;
     Logger.root.onRecord.listen((record) {
+      // logger implementation
       // ignore: avoid_print
       print('${record.level.name}: ${record.time}: ${record.message}');
     });
@@ -62,7 +63,7 @@ void main() {
 
   test('invalid nested transaction ...', () async {
     await expectLater(
-        () async => withTransaction(action: () async {
+        () => withTransaction(action: () async {
               await withTransaction(
                   action: () async {}, nesting: TransactionNesting.notAllowed);
             }),
@@ -107,11 +108,10 @@ void main() {
   });
   test('nested with no nesting transaction ...', () async {
     var ran = false;
-    await withTransaction(
-        action: () async {
-          ran = true;
-          expect(Scope.hasScopeKey(Transaction.transactionKey), isTrue);
-        });
+    await withTransaction(action: () async {
+      ran = true;
+      expect(Scope.hasScopeKey(Transaction.transactionKey), isTrue);
+    });
     expect(ran, isTrue);
     await DbPool().close();
   });
@@ -120,11 +120,10 @@ void main() {
     Db db;
     await withTransaction(action: () async {
       db = Transaction.current.db;
-      await withTransaction(
-          action: () async {
-            expect(db, equals(Transaction.current.db));
-            ran = true;
-          });
+      await withTransaction(action: () async {
+        expect(db, equals(Transaction.current.db));
+        ran = true;
+      });
     });
     expect(ran, isTrue);
     await DbPool().close();

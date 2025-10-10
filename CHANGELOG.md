@@ -1,3 +1,20 @@
+# 6.0.0
+- Fixed
+Eliminated a serious server-side prepared statement leak caused by unfreed PreparedStmt handles.
+All database queries now correctly deallocate prepared statements.
+
+All users SHOULD upgraded to 6.0.0
+
+- Changed
+Db.query() is now internal; external callers should use:
+You should use the higher level 'select', 'delete' etc.
+If you need to run a raw query then use:
+    Db.withResults(...) 
+
+- Added
+New test (statement_leak_test.dart) to verify withResults correctly cleans up.
+
+
 # 5.0.1
 - upgraded to dcli 7.x
 

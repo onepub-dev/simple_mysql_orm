@@ -8,6 +8,14 @@ import 'package:simple_mysql_orm/simple_mysql_orm.dart';
 
 /// What unpud refers to as an uploader
 class System extends Entity<System> {
+  late String key;
+
+  late String? value;
+
+  late DateTime createdAt;
+
+  late DateTime updatedAt;
+
   factory System({required String key, required String value}) =>
       System._internal(
           key: key,
@@ -39,11 +47,6 @@ class System extends Entity<System> {
     required this.updatedAt,
   }) : super(id);
 
-  late String key;
-  late String? value;
-
-  late DateTime createdAt;
-  late DateTime updatedAt;
   @override
   FieldList get fields => [
         'key',

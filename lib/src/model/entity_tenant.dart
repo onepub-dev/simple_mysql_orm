@@ -7,7 +7,8 @@
 import 'entity.dart';
 
 abstract class EntityTenant<T> extends Entity<T> {
+  late int tenantId;
+
   // pass the primary key up.
   EntityTenant(super.id);
-  late int tenantId;
 }

@@ -7,10 +7,11 @@
 import 'dart:collection';
 
 class CountedSet<T> {
-  CountedSet();
   final _set = SplayTreeMap<int, Set<T>>();
 
   final _values = <T, int>{};
+
+  CountedSet();
 
   Iterable<T> get values => _values.keys;
 
@@ -128,9 +129,9 @@ class CountedSet<T> {
 }
 
 class CountedSetException implements Exception {
-  CountedSetException(this.message);
-
   String message;
+
+  CountedSetException(this.message);
 
   @override
   String toString() => message;

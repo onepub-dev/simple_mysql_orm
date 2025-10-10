@@ -11,11 +11,12 @@ import 'package:recase/recase.dart';
 /// enums.
 ///
 class EnumHelper {
+  static final _self = EnumHelper._init();
+
   /// Factory Constructor.
   factory EnumHelper() => _self;
-  EnumHelper._init();
 
-  static final _self = EnumHelper._init();
+  EnumHelper._init();
 
   /// returns an enum based on its index.
   T getByIndex<T>(List<T> values, int index) => values.elementAt(index - 1);
@@ -53,8 +54,10 @@ class EnumHelper {
 }
 
 class InvalidEnumValueException implements Exception {
-  InvalidEnumValueException(this.message);
   String message;
+
+  InvalidEnumValueException(this.message);
+
   @override
   String toString() => message;
 }

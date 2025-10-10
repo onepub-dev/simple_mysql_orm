@@ -22,7 +22,7 @@ import 'transaction.dart';
 ///
 /// You need to inject your own [Transaction] into the scope.
 Future<T> withTenant<T>(
-    {required int tenantId, required Future<T> Function() action}) async {
+    {required int tenantId, required Future<T> Function() action}) {
   if (tenantId == Entity.notSet) {
     throw IdentityNotSetException('Invalid id ($tenantId) passed. '
         "If you don't have a tenant use 'withTenantByPass'");
@@ -30,7 +30,7 @@ Future<T> withTenant<T>(
   return (Scope('withTenant')
         ..value<int>(Tenant.tenantIdKey, tenantId)
         ..value<bool>(Tenant._bypassTenantKey, false))
-      .run(() async => action());
+      .run(() => action());
 }
 
 /// Allows a DaoTenant to access the db withouth passing in a tenant id.
@@ -39,20 +39,18 @@ Future<T> withTenant<T>(
 /// Use this method to access DaoTenants without constraining
 /// the results to a single tenant.
 /// It is appropriate to use this for things like cross tenant reporting.
-Future<R> withTenantByPass<R>({required Future<R> Function() action}) async =>
+Future<R> withTenantByPass<R>({required Future<R> Function() action}) =>
     (Scope('withTenantByPass')..value<bool>(Tenant._bypassTenantKey, true))
-        .run(() async => action());
+        .run(() => action());
 
-// ignore: avoid_classes_with_only_static_members
 class Tenant {
   /// On a multi-tenant system this key is used to
   /// inject the tenant id.
   /// Use the [withTenant] function to inject the value.
-  static const ScopeKey<int> tenantIdKey = ScopeKey<int>('tenantIdKey');
+  static const tenantIdKey = ScopeKey<int>('tenantIdKey');
 
   ///
-  static const ScopeKey<bool> _bypassTenantKey =
-      ScopeKey<bool>('bypassTenantKey');
+  static const _bypassTenantKey = ScopeKey<bool>('bypassTenantKey');
 
   // static String get tenantFieldName => Scope.use(tenantFieldKey);
   static int get tenantId => Scope.use(tenantIdKey);
@@ -60,8 +58,7 @@ class Tenant {
   /// True if we are in tenant bypass mode as the user
   /// called [withTenantByPass].
   static bool get inTenantBypassScope =>
-      Scope.hasScopeKey<bool>(_bypassTenantKey) &&
-      use(_bypassTenantKey);
+      Scope.hasScopeKey<bool>(_bypassTenantKey) && use(_bypassTenantKey);
 
   /// True if we are in tenant mode as the user called [withTenant]
   /// and we have not been bypassed.

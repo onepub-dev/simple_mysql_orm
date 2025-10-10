@@ -17,6 +17,21 @@ import 'transaction.dart';
 
 /// A pool of database connections.
 class DbPool {
+  static DbPool? _self;
+
+  String? _database;
+
+  /// The DbPool is open.
+  var open = true;
+
+  final SharedPool<Db> pool;
+
+  static var mysqMaxPoolSizeKey = 'mysql_max_pool_size';
+
+  static var mysqMinPoolSizeKey = 'mysql_min_pool_size';
+
+  static var useSSLKey = 'mysql_use_ssl';
+
   factory DbPool() {
     if (_self == null) {
       throw StateError('You must initialise the pool first');
@@ -174,22 +189,14 @@ class DbPool {
           excessDuration: excessDuration,
         );
 
-  static DbPool? _self;
-
-  String? _database;
-
   /// Returns the database name this pool is attached to.
   String? get database => _database;
-
-  /// The DbPool is open.
-  bool open = true;
-  final SharedPool<Db> pool;
 
   /// returns the no. of connections currently in the pool
   int get size => pool.size;
 
   /// obtains a wrapper containg a [Db] connection
-  Future<ConnectionWrapper<Db>> obtain() async {
+  Future<ConnectionWrapper<Db>> obtain()  {
     if (!open) {
       throw MySqlORMException('The DbPool has already been closed');
     }
@@ -203,11 +210,6 @@ class DbPool {
     }
     await pool.release(wrapper);
   }
-
-  static String mysqMaxPoolSizeKey = 'mysql_max_pool_size';
-  static String mysqMinPoolSizeKey = 'mysql_min_pool_size';
-
-  static String useSSLKey = 'mysql_use_ssl';
 
   /// Runs action passing in a [Db] from the pool
   Future<T> withDb<T>({required Future<T> Function(Db db) action}) async {
@@ -226,19 +228,19 @@ class DbPool {
 }
 
 class MySqlConnectonManager implements ConnectionManager<Db> {
-  MySqlConnectonManager(this.settings);
-
   ConnectionSettings settings;
 
+  MySqlConnectonManager(this.settings);
+
   @override
-  FutureOr<Db> open() async {
+  Future<Db> open() async {
     final db = Db.fromSettings(settings);
     await db.connect();
     return db;
   }
 
   @override
-  FutureOr<void> close(Db db) async {
+  Future<void> close(Db db) async {
     await db.connection.close();
   }
 }

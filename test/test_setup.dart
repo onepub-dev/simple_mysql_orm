@@ -15,7 +15,7 @@ import 'src/dao/dao_publisher.dart';
 import 'test_dao/model/member.dart';
 import 'test_dao/model/publisher.dart';
 
-bool setup = false;
+var setup = false;
 Future<void> testSetup() async {
   if (!setup) {
     setup = true;
@@ -82,17 +82,19 @@ const testMemberEmail = 'member@noojee.com.au';
 const testPublisherName = 'noojee.com.au';
 const testTeamName = 'The cool team';
 
-bool loggerInitialised = false;
+var loggerInitialised = false;
 void initLogger() {
   if (!loggerInitialised) {
     loggerInitialised = true;
     recordStackTraceAtLevel = Level.SEVERE;
     Logger.root.level = Level.INFO; // defaults to Level.INFO
     Logger.root.onRecord.listen((record) {
+      // logger implemenation
       // ignore: avoid_print
       print('${record.level.name}: ${record.time}:'
           ' ${record.message} : ${record.error}');
       if (record.stackTrace != null) {
+        // logger implemenation
         // ignore: avoid_print
         print(record.stackTrace);
       }

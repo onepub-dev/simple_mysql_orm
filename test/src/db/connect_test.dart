@@ -20,7 +20,6 @@ void main() {
     // actually connect to database
     await conn.connect();
 
-    // ignore: avoid_print
-    print('connected');
+    expect(true, true);
   });
 }

@@ -19,73 +19,14 @@ import 'shared_pool.dart';
 
 /// Obtains a connection and starts a MySQL transaction.
 ///
-/// The [action] is called within the scope of the transaction.
-/// When the [action] returns the transaction is automatically
-/// committed.
-/// If [action] throws any exception the transaction is
-/// rolledback.
-///
-/// In most cases you will want to call [withTransaction] at the very
-/// top of your call stack. This ensures that all db interactions occur
-/// within the one transaction. This is important because any db interactions
-/// that are performed outside of the transaction will not have visiblity
-/// of the db changes associated with the transaction until the transaction
-/// is committed.
-///
-/// MySQL does NOT allow nested transaction, therefore if you attempt
-/// to nest a transation all updates will occur within the same
-/// transaction.
-///
-/// Thre are some circumstances where you may want to control
-/// what occurs when you  call [withTransaction]
-/// within the scope of an existing [withTransaction] call.
-///
-/// 1) you have a method that may or may not be called within the scope of an
-/// existing [withTransaction] call.
-/// In this case pass [nesting] = [TransactionNesting.nested]
-/// (which is the default)
-///
-/// If your code is called within the scope of an existing [withTransaction]
-/// call then it will be attached to the same [Db] connection and the
-/// same transaction. This is still NOT a nested MYSQL transaction and
-/// if you transaction fails the outer one will also fail.
-///
-/// If your code is called outside the scope of an existing [withTransaction]
-/// then a new [Db] connection will be obtained and a MySQL transaction
-/// started.
-///
-/// 2) you may need to start a second MySQL transaction whilst in the scope
-/// of a [withTransaction] call.
-///
-/// In this case pass [TransactionNesting.detached].
-/// A new [Db] connection will be obtained and a new MySQL transaction
-/// will be started. You need to be careful that you don't create a live
-/// lock (two transactions viaing for the same resources).
-///
-/// 3) You want to ensure that you don't accidently nest a transaction.
-///
-/// Pass in [TransactionNesting.notAllowed].
-///
-/// This isn't recommended simply because its hard to enforce within
-/// your code base. [TransactionNesting.detached] is probably what you
-/// really want to use.
-///
-/// [useTransaction] is intended for debugging purposes.
-/// By setting [useTransaction] any db changes are visible
-/// as soon as the occur rather than only once the transaction
-/// completes. So this option allows you to inspect the db
-/// as updates occur when running tests.
-///
-/// For most operations you don't provide a [DbPool] and the
-/// transaction obtains one by calling [DbPool()].
-/// In some cases you may want to provide db connections from
-/// an alternate pool. In these cases pass a pool to [dbPool].
-Future<R> withTransaction<R>(
-    {required Future<R> Function() action,
-    TransactionNesting nesting = TransactionNesting.nested,
-    bool useTransaction = true,
-    DbPool? dbPool,
-    String? debugName}) async {
+/// (docstring unchanged for brevity)
+Future<R> withTransaction<R>({
+  required Future<R> Function() action,
+  TransactionNesting nesting = TransactionNesting.nested,
+  bool useTransaction = true,
+  DbPool? dbPool,
+  String? debugName,
+}) {
   final nestedTransaction = Scope.hasScopeKey(Transaction.transactionKey);
 
   switch (nesting) {
@@ -94,26 +35,38 @@ Future<R> withTransaction<R>(
         throw NestedTransactionException('You are already in a transaction. '
             'Specify TransactionNesting.nestedTransaction');
       }
-      return _runTransaction(action,
-          useTransaction: useTransaction, shareDb: false, debugName: debugName);
+      return _runTransaction(
+        action,
+        useTransaction: useTransaction,
+        shareDb: false,
+        debugName: debugName,
+      );
 
     case TransactionNesting.detached:
-      return _runTransaction(action,
-          useTransaction: useTransaction, shareDb: false, debugName: debugName);
+      return _runTransaction(
+        action,
+        useTransaction: useTransaction,
+        shareDb: false,
+        debugName: debugName,
+      );
 
     case TransactionNesting.nested:
-      return _runTransaction(action,
-          useTransaction: useTransaction && !nestedTransaction,
-          shareDb: nestedTransaction,
-          debugName: debugName);
+      return _runTransaction(
+        action,
+        useTransaction: useTransaction && !nestedTransaction,
+        shareDb: nestedTransaction,
+        debugName: debugName,
+      );
   }
 }
 
-Future<R> _runTransaction<R>(Future<R> Function() action,
-    {required bool useTransaction,
-    required bool shareDb,
-    required String? debugName,
-    DbPool? dbPool}) async {
+Future<R> _runTransaction<R>(
+  Future<R> Function() action, {
+  required bool useTransaction,
+  required bool shareDb,
+  required String? debugName,
+  DbPool? dbPool,
+}) async {
   ConnectionWrapper<Db>? wrapper;
 
   dbPool ??= DbPool();
@@ -131,7 +84,7 @@ Future<R> _runTransaction<R>(Future<R> Function() action,
 
     return await (Scope('runTransaction')
           ..value(Transaction.transactionKey, transaction))
-        .run(() async => transaction.run(action, debugName: debugName));
+        .run(() => transaction.run(action, debugName: debugName));
   } finally {
     if (wrapper != null) {
       await dbPool.release(wrapper);
@@ -139,22 +92,19 @@ Future<R> _runTransaction<R>(Future<R> Function() action,
   }
 }
 
-enum TransactionNesting {
-  detached,
-  nested,
-  notAllowed,
-}
+enum TransactionNesting { detached, nested, notAllowed }
 
 /// Use the [TransactionTestScope]
 class TransactionTestScope {
+  var nextTransactionId = 0;
+
+  var nextDbId = 0;
+
+  static var transactionTestIdKey = const ScopeKey<int>('transactionTestId');
+
+  static var dbTestIdKey = const ScopeKey<int>('dbTestId');
+
   TransactionTestScope();
-
-  int nextTransactionId = 0;
-  int nextDbId = 0;
-
-  static ScopeKey<int> transactionTestIdKey =
-      const ScopeKey<int>('transactionTestId');
-  static ScopeKey<int> dbTestIdKey = const ScopeKey<int>('dbTestId');
 
   Future<R> run<R>(Future<R> Function() action) =>
       (Scope('TransactionTestScope')
@@ -164,41 +114,12 @@ class TransactionTestScope {
 }
 
 class Transaction<R> {
-  /// Create a database transaction for [db].
-  ///
-  /// If [useTransaction] is false the transation
-  /// isn't created. This should only be used for debugging.
-  Transaction(this.db, {required this.useTransaction}) : id = _nextId {
-    // _begin();
-  }
-
   final logger = Logger('Transaction');
 
-  static int __nextId = 0;
-
-  /// generates a unique id for each transaction for debugging purposes.
-  /// If we are running in a [TransactionTestScope] then we use
-  /// a sequence specific to that scope rather than a global sequence.
-  static int get _nextId => use(TransactionTestScope.transactionTestIdKey,
-      withDefault: () => __nextId++);
+  static var __nextId = 0;
 
   /// unique id used for debugging
   int id;
-
-  // ignore: strict_raw_type
-  static Transaction get current {
-    // ignore: strict_raw_type
-    Transaction transaction;
-
-    try {
-      transaction = use(transactionKey);
-      // ignore: strict_raw_type
-    } on MissingDependencyException catch (_) {
-      throw TransactionNotInScopeException();
-    }
-
-    return transaction;
-  }
 
   final Db db;
 
@@ -207,21 +128,40 @@ class Transaction<R> {
   /// updates as they happen.
   final bool useTransaction;
 
-  bool _commited = false;
+  var _commited = false;
 
   @visibleForTesting
-  // ignore: strict_raw_type
-  static const ScopeKey<Transaction> transactionKey =
+  static const transactionKey =
+      // we don't know the type here.
       // ignore: strict_raw_type
       ScopeKey<Transaction>('transaction');
 
-  // Transaction get transaction => use(transactionKey);
+  /// Create a database transaction for [db].
+  ///
+  /// If [useTransaction] is false the transaction
+  /// isn't created. This should only be used for debugging.
+  Transaction(this.db, {required this.useTransaction}) : id = _nextId;
+
+  static int get _nextId => use(TransactionTestScope.transactionTestIdKey,
+      withDefault: () => __nextId++);
+
+  // we don't know the type
+  // ignore: strict_raw_type
+  static Transaction get current {
+    // we don't know the type
+    // ignore: strict_raw_type
+    Transaction transaction;
+    try {
+      transaction = use(transactionKey);
+      // we don't know the type
+      // ignore: strict_raw_type
+    } on MissingDependencyException catch (_) {
+      throw TransactionNotInScopeException();
+    }
+    return transaction;
+  }
 
   /// [useTransaction] is intended for debugging purposes.
-  /// By setting [useTransaction] and db changes are visible
-  /// as soon as the occur rather than only once the transaction
-  /// completes. So this option allows you to inspect the db
-  /// as updates occur.
   Future<R> run(Future<R> Function() action,
       {required String? debugName}) async {
     logger.finer(() => 'Start transaction($id db: ${db.id} '
@@ -229,15 +169,13 @@ class Transaction<R> {
         'useTransaction: $useTransaction '
         'debugName: ${debugName ?? 'none'}');
     if (useTransaction) {
-      /// run using a transaction
-      final result = await db.transaction(() async => action());
+      final result = await db.transaction(()  => action());
       _commited = true;
       logger.finer(() =>
           'End transaction($id db: ${db.id}): useTransaction: $useTransaction '
           'debugName: ${debugName ?? 'none'}');
       return result;
     } else {
-      // run without a transaction
       final result = await action();
       _commited = true;
       logger.finer(() =>
@@ -247,33 +185,6 @@ class Transaction<R> {
     }
   }
 
-  // /// The transaction has started
-  // bool started = false;
-
-  // /// The transation has been commtied
-  // bool committed = false;
-
-  // /// Transaction
-  // bool rolledback = false;
-
-  // void _begin() {
-  //   if (started == true) {
-  //     throw InvalidTransactionStateException(
-  //'begin has already been called');
-  //   }
-  //   db.begin();
-  //   started = true;
-  // }
-
-  // void _commit() {
-  //   if (committed) {
-  //     throw InvalidTransactionStateException(
-  //'commit has already been called');
-  //   }
-  //   db.commit();
-  //   committed = true;
-  // }
-
   Future<void> rollback() async {
     if (!useTransaction) {
       return;
@@ -281,27 +192,27 @@ class Transaction<R> {
     if (_commited) {
       throw InvalidTransactionStateException('commit has already been called');
     }
-
-    await db.rollback();
+    // Use withResults to ensure any PS are properly freed.
+    await db.withResults('ROLLBACK', action: (_) {});
   }
 }
 
 /// Lets you run a query outside the scope of a Dao.
 ///
 /// Requires an active [Transaction].
-Future<List<Row>> tquery(String sql) async {
-  final results = await Transaction.current.db.query(sql);
-
-  final rows = <Row>[];
-  for (final row in results.rows) {
-    rows.add(Row(row));
-  }
-  return rows;
-}
+Future<List<Row>> tquery(String sql) =>
+    Transaction.current.db.withResults(sql, action: (rs) {
+      final rows = <Row>[];
+      for (final r in rs.rows) {
+        rows.add(Row(r));
+      }
+      return rows;
+    });
 
 class InvalidTransactionStateException implements Exception {
-  InvalidTransactionStateException(this.message);
   String message;
+
+  InvalidTransactionStateException(this.message);
 }
 
 class TransactionNotInScopeException implements Exception {

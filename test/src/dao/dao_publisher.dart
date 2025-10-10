@@ -31,7 +31,7 @@ class DaoPublisher extends Dao<Publisher> {
   @override
   Publisher fromRow(Row row) => Publisher.fromRow(row);
 
-  Future<List<Publisher>> search({required String partialName}) async =>
+  Future<List<Publisher>> search({required String partialName})  =>
       query('select * from $tablename where name like ?', ['%$partialName%']);
 }
 
@@ -48,9 +48,9 @@ class UnknownPublisherException extends SMOException {
 }
 
 class SMOException implements Exception {
-  SMOException(this.message);
-
   String message;
+
+  SMOException(this.message);
 
   @override
   String toString() => message;

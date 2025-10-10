@@ -8,6 +8,24 @@
 import 'package:simple_mysql_orm/simple_mysql_orm.dart';
 
 class Package extends Entity<Package> {
+  /// name of this package.
+  late String name;
+
+  /// The latest version no. for this package.
+  late String latestVersion;
+
+  /// If this package is private
+  late bool private;
+
+  // When this package was first uploaded
+  late DateTime createdAt;
+
+  /// The last time the package was updated.
+  late DateTime updatedAt;
+
+  /// total number of downloads for all versions of this package.
+  late int downloads;
+
   factory Package({required String name, bool private = true}) =>
       Package._internal(
           id: Entity.notSet,
@@ -47,24 +65,6 @@ class Package extends Entity<Package> {
       required this.updatedAt,
       required this.downloads})
       : super(id);
-
-  /// name of this package.
-  late String name;
-
-  /// The latest version no. for this package.
-  late String latestVersion;
-
-  /// If this package is private
-  late bool private;
-
-  // When this package was first uploaded
-  late DateTime createdAt;
-
-  /// The last time the package was updated.
-  late DateTime updatedAt;
-
-  /// total number of downloads for all versions of this package.
-  late int downloads;
 
   @override
   FieldList get fields => [

@@ -11,6 +11,8 @@ import 'package:money2/money2.dart';
 import 'package:mysql_client/mysql_client.dart';
 
 class Row {
+  ResultSetRow row;
+
   Row(this.row) {
     // this.fields =
     //     CanonicalizedMap<String, String, dynamic>((key)
@@ -18,15 +20,15 @@ class Row {
 
     // this.fields.addAll(fields);
   }
-  ResultSetRow row;
-  // late final CanonicalizedMap<String, String, dynamic> fields;
 
   /// convert the field with [name] to a string.
   String asString(String name) => tryString(name)!;
+
   String? tryString(String name) => tryValue(name);
 
   /// convert the field with [name] to a int.
   int asInt(String name) => tryInt(name)!;
+
   int? tryInt(String name) {
     final value = tryValue(name);
 
@@ -43,6 +45,7 @@ class Row {
 
   /// convert the field with [name] to a bool.
   bool asBool(String name) => tryBool(name)!;
+
   bool? tryBool(String name) {
     final value = tryInt(name);
     if (value == null) {
@@ -53,6 +56,7 @@ class Row {
 
   /// convert the field with [name] to a DateTime.
   DateTime asDateTime(String name) => tryDateTime(name)!;
+
   DateTime? tryDateTime(String name) {
     final value = tryValue(name);
     if (value == null) {
@@ -63,6 +67,7 @@ class Row {
 
   /// convert the field with [name] to a Date.
   Date asDate(String name) => tryDate(name)!;
+
   Date? tryDate(String name) {
     final value = tryDateTime(name);
     if (value == null) {
@@ -73,6 +78,7 @@ class Row {
 
   /// convert the field with [name] to a Date.
   Time asTime(String name) => tryTime(name)!;
+
   Time? tryTime(String name) {
     final value = tryValue(name);
     if (value == null) {
@@ -102,8 +108,6 @@ class Row {
     }
     return convertTo(value);
   }
-
-  //  E? _tryValue<E>(String name) => tryValue(row, name);
 
   String? tryValue(String name) => row.colByName(name);
 }

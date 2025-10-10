@@ -15,6 +15,7 @@ void main() {
     // Logger.root.clearListeners();
     Logger.root.level = Level.INFO; // defaults to Level.INFO
     Logger.root.onRecord.listen((record) {
+      // for a test we log to cli.
       // ignore: avoid_print
       print('${record.level.name}: ${record.time}: ${record.message}');
     });
@@ -48,8 +49,7 @@ void main() {
     for (var i = 0; i < 3; i++) {
       final db = await pool.obtain();
       obtained.add(db);
-      // ignore: avoid_print
-      print(db.wrapped.id);
+      Logger.root.fine(db.wrapped.id);
     }
     expect(released, isTrue);
 
@@ -77,8 +77,7 @@ void main() {
     for (var i = 0; i < 3; i++) {
       final db = await pool.obtain();
       obtained.add(db);
-      // ignore: avoid_print
-      print(db.wrapped.id);
+      Logger.root.fine(db.wrapped.id);
     }
 
     /// we should get here before release is called.

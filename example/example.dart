@@ -1,3 +1,4 @@
+// this is a cli app
 // ignore_for_file: avoid_print
 
 /* Copyright (C) S. Brett Sutton - All Rights Reserved

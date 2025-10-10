@@ -28,7 +28,7 @@ class MemberDao extends DaoTenant<Member> {
   @override
   Member fromRow(Row row) => Member.fromRow(row);
 
-  Future<List<Member>> search(String name) async => query(
+  Future<List<Member>> search(String name)  => query(
       'select * from $tablename where name like ? and publisherId = ?',
       ['%$name%', Tenant.tenantId]);
 }

@@ -29,15 +29,18 @@ class DaoFileExistsException extends MySqlORMException {
 }
 
 class MySQLException implements Exception {
-  MySQLException(this.message);
   String message;
+
+  MySQLException(this.message);
+
   @override
   String toString() => message;
 }
 
 class MySqlORMException implements Exception {
-  MySqlORMException(this.message);
   String message;
+
+  MySqlORMException(this.message);
 
   @override
   String toString() => message;

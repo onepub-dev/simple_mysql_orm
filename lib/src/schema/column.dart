@@ -12,6 +12,20 @@ import '../util/enum_helper.dart';
 /// Holds a column definition as returned by
 /// 'show columns from <table>'
 class Column {
+  late String name;
+
+  late Type type;
+
+  late int size;
+
+  late bool allowNull;
+
+  late Key key;
+
+  late bool autoIncrement;
+
+  late TypeDetails typeDetails;
+
   Column.fromRow(Row row) {
     name = row.asString('Field');
     typeDetails = _parseType(row.asString('Type'), name);
@@ -21,14 +35,6 @@ class Column {
     key = KeyEx.fromName(row.asString('Key'));
     autoIncrement = (row.asString('Extra')) == 'auto_increment';
   }
-
-  late String name;
-  late Type type;
-  late int size;
-  late bool allowNull;
-  late Key key;
-  late bool autoIncrement;
-  late TypeDetails typeDetails;
 
   String dartType() {
     switch (type) {
@@ -73,17 +79,19 @@ TypeDetails _parseEnumType(String type, String name) =>
     TypeDetails.forEnum(name);
 
 class TypeDetails {
+  Type type;
+
+  int size;
+
+  /// only set if [type] == [Type.enumT]
+  String? enumName;
+
   TypeDetails(String type, this.size) : type = TypeEx.fromName(type);
 
   TypeDetails.forEnum(String columnName)
       : type = Type.enumT,
         size = 1,
         enumName = ReCase(columnName).pascalCase;
-  Type type;
-  int size;
-
-  /// only set if [type] == [Type.enumT]
-  String? enumName;
 }
 
 enum Key {

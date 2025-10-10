@@ -16,7 +16,7 @@ void main() {
 
     await withTenant(
         tenantId: 1,
-        action: () async {
+        action: ()  {
           expect(true, true);
           return Future.value(1);
         });

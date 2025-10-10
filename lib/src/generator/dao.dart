@@ -12,6 +12,8 @@ import 'model.dart';
 
 /// throws [DaoFileExistsException] if the output file already exists.
 void generateDao(String tablename, List<Column> columns, {String? filename}) {
+  // we needed a non-const init
+  // ignore: no_leading_underscores_for_local_identifiers
   final _filename = filename ??= 'dao_${ReCase(tablename).snakeCase}.dart';
 
   if (exists(_filename)) {
@@ -26,17 +28,17 @@ void generateDao(String tablename, List<Column> columns, {String? filename}) {
 
 String _getSource(String tablename, List<Column> columns) {
   final modelClassName = ReCase(tablename).pascalCase;
-  final _className = 'Dao$modelClassName';
-  final _modelFileName = ReCase(tablename).snakeCase;
+  final className = 'Dao$modelClassName';
+  final modelFileName = ReCase(tablename).snakeCase;
 
   return '''
 
 import 'package:simple_mysql_orm/simple_mysql_orm.dart';
-import '$_modelFileName.dart';
+import '$modelFileName.dart';
 
-class $_className extends Dao<$modelClassName> {
-  $_className() : super(tablename);
-  $_className.withDb(Db db)
+class $className extends Dao<$modelClassName> {
+  $className() : super(tablename);
+  $className.withDb(Db db)
       : super.withDb(db, tablename);
 
   static String get tablename => '$tablename';

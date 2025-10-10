@@ -12,43 +12,43 @@ import '../schema/column.dart';
 
 /// throws [ModelFileExistsException] if the output file already exists.
 void generateModel(String tablename, List<Column> columns, {String? filename}) {
-  final _filename = filename ??= '${ReCase(tablename).snakeCase}.dart';
+  final filename0 = filename ??= '${ReCase(tablename).snakeCase}.dart';
 
-  if (exists(_filename)) {
+  if (exists(filename0)) {
     throw ModelFileExistsException(
-        'The file ${truepath(_filename)} already exists');
+        'The file ${truepath(filename0)} already exists');
   }
 
   sortColumns(columns);
 
-  _filename.write(_getSource(tablename, columns));
+  filename0.write(_getSource(tablename, columns));
 }
 
 String _getSource(String tablename, List<Column> columns) {
-  final _className = ReCase(tablename).pascalCase;
+  final className = ReCase(tablename).pascalCase;
 
   return '''
 ${importDateTime(columns)}
 import 'package:simple_mysql_orm/simple_mysql_orm.dart';
 
-class $_className extends EntityTenant<$_className> {
-  factory $_className({
+class $className extends EntityTenant<$className> {
+  factory $className({
 ${_ctorArgs(columns, 4)}
   }) =>
-      $_className._internal(
+      $className._internal(
 ${_ctorInternal(columns, 10)}
           );
 
-  factory $_className.fromRow(Row row) {
+  factory $className.fromRow(Row row) {
 ${_fromRow(columns, 4)}    
 
 
-    return $_className._internal(
+    return $className._internal(
 ${_returnInternal(columns, 8)}      
         );
   }
 
-  $_className._internal({
+  $className._internal({
 ${_internalArgs(columns, 4)}    
   }) : super(id);
 
@@ -65,7 +65,7 @@ ${_valueList(columns, 8)}
       ];
 }
 
-typedef ${_className}Id = int;
+typedef ${className}Id = int;
 
 ''';
 }

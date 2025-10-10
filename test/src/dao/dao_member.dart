@@ -37,6 +37,6 @@ class DaoMember extends DaoTenant<Member> {
   @override
   Member fromRow(Row row) => Member.fromRow(row);
 
-  Future<List<Member>> search(String email) async =>
+  Future<List<Member>> search(String email)  =>
       query('select * from $tablename where email like ?', ['%$email%']);
 }

@@ -4,7 +4,7 @@
  * Written by Brett Sutton <bsutton@onepub.dev>, Jan 2022
  */
 
-library builder;
+library ;
 
 import '../../simple_mysql_orm.dart';
 
@@ -12,23 +12,31 @@ part 'delete.dart';
 part 'select.dart';
 
 class Builder<E> {
-  Builder.withDb(this.db, this.dao);
   Db db;
+
   Dao<E> dao;
+
+  Select<E>? _select;
+
+  Delete<E>? _delete;
+
+  Where<E>? _where;
+
+  final _whereExpressions = <WhereExpression<E>>[];
+
+  OrderBy<E>? _orderBy;
+
+  Builder.withDb(this.db, this.dao);
+
   Select<E> select() => _select = Select<E>(this);
 
   Delete<E> delete() => _delete = Delete<E>(this);
-
-  Select<E>? _select;
-  Delete<E>? _delete;
-  Where<E>? _where;
-  final _whereExpressions = <WhereExpression<E>>[];
-  OrderBy<E>? _orderBy;
 }
 
 class Where<E> {
-  Where(this._builder);
   final Builder<E> _builder;
+
+  Where(this._builder);
 
   WhereExpression<E> eq(String field, String match) {
     final exp = EqualsExpression<E>(_builder, field, match);
@@ -50,10 +58,11 @@ class Where<E> {
 }
 
 class EqualsExpression<E> extends WhereExpression<E> {
-  EqualsExpression(super.builder, this._field, this._match);
-
   final String _field;
+
   final String _match;
+
+  EqualsExpression(super.builder, this._field, this._match);
 
   @override
   List<Object> get _values => [_match];
@@ -63,10 +72,11 @@ class EqualsExpression<E> extends WhereExpression<E> {
 }
 
 class LikeExpression<E> extends WhereExpression<E> {
-  LikeExpression(super.builder, this._field, this._match);
-
   final String _field;
+
   final String _match;
+
+  LikeExpression(super.builder, this._field, this._match);
 
   @override
   List<Object> get _values => [_match];
@@ -85,16 +95,19 @@ abstract class WhereExpression<E> extends Query<E> {
 }
 
 class OrderBy<E> extends Query<E> {
-  OrderBy(super.builder, this._field, {bool asc = true}) : _asc = asc;
   final String _field;
+
   final bool _asc;
+
+  OrderBy(super.builder, this._field, {bool asc = true}) : _asc = asc;
 }
 
 class Query<E> {
-  Query(this.builder);
   Builder<E> builder;
 
-  Future<List<E>> run() async {
+  Query(this.builder);
+
+  Future<List<E>> run()  {
     if (builder._select != null) {
       return builder._select!._query();
     } else if (builder._delete != null) {

@@ -9,6 +9,16 @@ import 'package:simple_mysql_orm/simple_mysql_orm.dart';
 
 /// What unpud refers to as an uploader
 class Member extends EntityTenant<Member> {
+  late String email;
+
+  late Date startDate;
+
+  late bool enabled;
+
+  late DateTime createdAt;
+
+  late DateTime updatedAt;
+
   factory Member({
     required String email,
   }) =>
@@ -45,14 +55,6 @@ class Member extends EntityTenant<Member> {
     required this.createdAt,
     required this.updatedAt,
   }) : super(id);
-
-  late String email;
-
-  late Date startDate;
-  late bool enabled;
-
-  late DateTime createdAt;
-  late DateTime updatedAt;
 
   @override
   FieldList get fields =>

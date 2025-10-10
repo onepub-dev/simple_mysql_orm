@@ -9,18 +9,18 @@ import 'package:meta/meta.dart';
 import '../../simple_mysql_orm.dart';
 
 abstract class DaoTenant<E extends EntityTenant<E>> extends Dao<E> {
+  String tenantFieldName;
+
   DaoTenant(super._tablename, {required this.tenantFieldName});
 
   /// Create a dao object with passed [db]
   DaoTenant.withDb(super.db, super._tablename, {required this.tenantFieldName})
       : super.withDb();
 
-  String tenantFieldName;
-
   /// Assumes that the last clause in [query] is a where clause
   /// and appends the tenant id if we are in tenant mode.
-  Future<List<E>> queryTenant(String _query, ValueList values) async =>
-      query(appendTenantWhere(_query), appendTenantValue(values));
+  Future<List<E>> queryTenant(String query, ValueList values)  =>
+      this.query(appendTenantWhere(query), appendTenantValue(values));
 
   @override
   Future<List<E>> getListByField(String fieldName, String fieldValue,
@@ -28,7 +28,7 @@ abstract class DaoTenant<E extends EntityTenant<E>> extends Dao<E> {
       int offset = 0,
       int limit = 20,
       String? orderBy,
-      SortDirection sortDirection = SortDirection.asc}) async {
+      SortDirection sortDirection = SortDirection.asc})  {
     var sql = 'select * from ${getTablename()} ';
 
     final values = [fieldValue];
@@ -52,17 +52,16 @@ abstract class DaoTenant<E extends EntityTenant<E>> extends Dao<E> {
   }
 
   String appendTenantWhere(String sql, {bool addWhere = false}) {
-    var _sql = sql;
     if (Tenant.inTenantScope) {
       if (addWhere) {
-        _sql += ' where ';
+        sql += ' where ';
       } else {
-        _sql += ' and ';
+        sql += ' and ';
       }
 
-      _sql += '`${getTablename()}`.`$tenantFieldName`= ? ';
+      sql += '`${getTablename()}`.`$tenantFieldName`= ? ';
     }
-    return _sql;
+    return sql;
   }
 
   @override

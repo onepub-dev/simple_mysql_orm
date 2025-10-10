@@ -27,6 +27,6 @@ class PublisherDao extends Dao<Publisher> {
   @override
   Publisher fromRow(Row row) => Publisher.fromRow(row);
 
-  Future<List<Publisher>> search(String name) async =>
+  Future<List<Publisher>> search(String name)  =>
       query('select * from $tablename where name like ?', ['%$name%']);
 }

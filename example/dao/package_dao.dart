@@ -34,7 +34,7 @@ class PackageDao extends Dao<Package> {
     String? keyword,
     String? uploader,
     String? dependency,
-  }) async {
+  })  {
     final values = <String>[];
 
     var where = '';

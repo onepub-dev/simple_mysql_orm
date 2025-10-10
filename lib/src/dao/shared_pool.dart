@@ -19,6 +19,7 @@ import 'db.dart';
 /// The [manager] contains the logic to open and close connections.
 ///
 /// Example:
+/// ```dart
 ///     final pool = SharedPool(PostgresManager('exampleDB'), minSize: 5,
 ///                    maxSize: 10);
 ///     createTable() async {
@@ -29,7 +30,27 @@ import 'db.dart';
 ///              age INT);");
 ///       await conn.release();
 ///     }
+/// ```
 class SharedPool<T extends Transactionable> implements Pool<T> {
+  @override
+  final ConnectionManager<T> manager;
+
+  late final logger = Logger('SharedPool');
+
+  final int minSize;
+
+  final int maxSize;
+
+  final Duration excessDuration;
+
+  late Timer _releaseTimer;
+
+  /// Used to track the set of connections and whether
+  /// they are in use.
+  final _pool = <ConnectionWrapper<T>, bool>{};
+
+  var available = Completer<bool>();
+
   /// The [excessDuration] sets the duration after which we check
   /// for any excess connections and disconnect from them.
   SharedPool(
@@ -53,20 +74,6 @@ class SharedPool<T extends Transactionable> implements Pool<T> {
     // start timer future to release excess connections.
     _releaseTimer = Timer(excessDuration, _releaseExcess);
   }
-  @override
-  final ConnectionManager<T> manager;
-
-  late final logger = Logger('SharedPool');
-
-  final int minSize;
-  final int maxSize;
-  final Duration excessDuration;
-
-  late Timer _releaseTimer;
-
-  /// Used to track the set of connections and whether
-  /// they are in use.
-  final _pool = <ConnectionWrapper<T>, bool>{};
 
   int get size => _pool.length;
 
@@ -78,8 +85,6 @@ class SharedPool<T extends Transactionable> implements Pool<T> {
 
     return conn;
   }
-
-  Completer<bool> available = Completer<bool>();
 
   /// Returns a connection
   @override
@@ -135,7 +140,6 @@ class SharedPool<T extends Transactionable> implements Pool<T> {
             await manager.close(conn.wrapped);
             logger.finer(() =>
                 'removed from pool unused connection: ${conn.wrapped.id}');
-            // ignore: avoid_catches_without_on_clauses
           } catch (e, st) {
             logger.severe(() => 'Failed closing connection', e, st);
           }
@@ -170,13 +174,13 @@ class SharedPool<T extends Transactionable> implements Pool<T> {
     /// that another async method can't obtain it.
     _pool[conn] = true;
 
-    final _conn = await _validConnection(conn);
+    final conn0 = await _validConnection(conn);
 
     // Mark the returned connection as in use as it
     // may be different from the one we passed in.
-    _pool[_conn] = true;
+    _pool[conn0] = true;
 
-    return _conn;
+    return conn0;
   }
 
   void _deallocate(ConnectionWrapper<T> conn) {
@@ -195,34 +199,33 @@ class SharedPool<T extends Transactionable> implements Pool<T> {
   /// then an exception will be thrown.
   Future<ConnectionWrapper<T>> _validConnection(
       ConnectionWrapper<T>? conn) async {
-    var _conn = conn;
+    var conn0 = conn;
     var retries = 30;
     var success = false;
 
     String? lastError;
     while (!success && retries > 0) {
       try {
-        if (_conn != null && await _conn.wrapped.test()) {
+        if (conn0 != null && await conn0.wrapped.test()) {
           success = true;
           if (lastError != null) {
             logger.warning('Connection to MySQL succeeded.');
           }
           break;
         } else {
-          if (_conn != null) {
-            _removeBadConnection(_conn);
-            _conn = null;
+          if (conn0 != null) {
+            _removeBadConnection(conn0);
+            conn0 = null;
           }
           retries--;
-          _conn = await _createNew();
+          conn0 = await _createNew();
           success = true;
           break;
         }
-        // ignore: avoid_catches_without_on_clauses
       } catch (e) {
         // remove the bad connection
-        _removeBadConnection(_conn);
-        _conn = null;
+        _removeBadConnection(conn0);
+        conn0 = null;
         lastError = e.toString();
         if (e is MySqlException) {
           /// no point retrying if its access denied.
@@ -244,7 +247,7 @@ class SharedPool<T extends Transactionable> implements Pool<T> {
       throw MySqlORMException('Unable to connect to db. $lastError');
     }
 
-    return _conn!;
+    return conn0!;
   }
 
   /// Throws a MySQLException if we find a connection
@@ -297,39 +300,39 @@ class SharedPool<T extends Transactionable> implements Pool<T> {
 
 /// A connection
 class ConnectionWrapper<T extends Transactionable> {
-  ConnectionWrapper._(this.pool, this._wrapped);
-
-  /// Releases the connection
-  Future<void> release() => pool.release(this);
-
   /// The connection [Pool] this connection belongs to.
   final Pool<T> pool;
 
   /// The underlying connection
   final T _wrapped;
 
+  /// Is this connection released to the pool?
+  var isReleased = false;
+
+  /// when this connection was last used.
+  var lastUsed = DateTime.now();
+
+  ConnectionWrapper._(this.pool, this._wrapped);
+
+  /// Releases the connection
+  Future<void> release() => pool.release(this);
+
   bool get inTransaction => _wrapped.inTransaction;
 
   int get id => _wrapped.id;
 
-  /// Is this connection released to the pool?
-  bool isReleased = false;
-
   T get wrapped => _wrapped;
 
-  /// when this connection was last used.
-  DateTime lastUsed = DateTime.now();
-
-  Future<void> close() async => _wrapped.close();
+  Future<void> close() => _wrapped.close();
 }
 
 /// Interface to open and close the connection [C]
 abstract class ConnectionManager<C> {
   /// Establishes and returns a new connection
-  FutureOr<C> open();
+  Future<C> open();
 
   /// Closes provided[connection]
-  FutureOr<void> close(C connection);
+  Future<void> close(C connection);
 }
 
 /// Interface for pool

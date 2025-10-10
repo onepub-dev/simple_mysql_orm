@@ -7,13 +7,6 @@
 import 'package:mysql_client/mysql_client.dart';
 
 class ConnectionSettings {
-  ConnectionSettings(
-      {required this.host,
-      required this.port,
-      required this.user,
-      required this.password,
-      this.db,
-      this.useSSL = true});
   String host;
 
   int port;
@@ -25,6 +18,15 @@ class ConnectionSettings {
   String? db;
 
   bool useSSL;
+
+  ConnectionSettings(
+      {required this.host,
+      required this.port,
+      required this.user,
+      required this.password,
+      this.db,
+      this.useSSL = true});
+
   Future<MySQLConnection> createConnection() async {
     final connection = await MySQLConnection.createConnection(
         host: host,

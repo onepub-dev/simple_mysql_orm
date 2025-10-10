@@ -8,6 +8,16 @@ import 'package:simple_mysql_orm/simple_mysql_orm.dart';
 
 /// What unpud refers to as an uploader
 class Publisher extends Entity<Publisher> {
+  /// for private packages this is the user
+  /// for pub.dev packages this is the actual publisher.
+  late String name;
+
+  late String contactEmail;
+
+  late DateTime createdAt;
+
+  late DateTime updatedAt;
+
   factory Publisher({required String name, required String contactEmail}) =>
       Publisher._internal(
           name: name,
@@ -39,16 +49,6 @@ class Publisher extends Entity<Publisher> {
     required this.createdAt,
     required this.updatedAt,
   }) : super(id);
-
-  /// for private packages this is the user
-  /// for pub.dev packages this is the actual publisher.
-  late String name;
-
-  late String contactEmail;
-
-  late DateTime createdAt;
-
-  late DateTime updatedAt;
 
   @override
   FieldList get fields => [
