@@ -1,3 +1,6 @@
+# 6.2.0
+- added a new execute method the returns the no. of rows updated.
+
 # 6.1.0
 - Upgraded to dcli 8.1
 
