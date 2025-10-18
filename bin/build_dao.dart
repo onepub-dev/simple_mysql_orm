@@ -13,7 +13,8 @@ import 'package:simple_mysql_orm/simple_mysql_orm.dart';
 import 'package:simple_mysql_orm/src/generator/dao.dart';
 import 'package:simple_mysql_orm/src/generator/model.dart';
 
-/// Creates a Dao and Model class from a table name.
+/// Creates a Dao and Model class from a table by getting the
+/// table structure from the db.
 ///
 
 Future<void> main(List<String> args) async {

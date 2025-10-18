@@ -4,7 +4,6 @@
  * Written by Brett Sutton <bsutton@onepub.dev>, Jan 2022
  */
 
-
 import 'dart:convert';
 
 import 'package:date_time/date_time.dart';
@@ -29,12 +28,21 @@ abstract class Dao<E> {
   @protected
   E callFromRow(Row row) => fromRow(row);
 
+  Future<int> execute(String statement, [ValueList values = const []]) {
+    validate(statement);
+    return db.withResults(
+      statement,
+      values: values,
+      action: (rs) => rs.affectedRowsAsInt(),
+    );
+  }
+
   Select<E> select() => Builder<E>.withDb(db, this).select();
 
   Delete<E> delete() => Builder<E>.withDb(db, this).delete();
 
   /// Custom SELECT returning entities.
-  Future<List<E>> query(String query, ValueList values)  {
+  Future<List<E>> query(String query, ValueList values) {
     validate(query);
     return db.withResults(query,
         values: values, action: (rs) => Future.value(fromResults(rs)));
@@ -45,7 +53,7 @@ abstract class Dao<E> {
     String query,
     ValueList values,
     O Function(Row row) adaptor,
-  )  {
+  ) {
     validate(query);
     return db.withResults(query, values: values, action: (rs) {
       final rows = <O>[];
@@ -73,7 +81,7 @@ when it was expected to exist''');
     ValueList values,
     String fieldName,
     S? Function(String value) convert,
-  )  {
+  ) {
     validate(query);
     return db.withResults(query, values: values, action: (rs) {
       if (rs.rows.isEmpty) {
@@ -98,7 +106,7 @@ when it was expected to exist''');
     int limit = 20,
     String? orderBy,
     SortDirection sortDirection = SortDirection.asc,
-  })  {
+  }) {
     var sql = 'select * from $_tablename ';
     if (like) {
       sql += 'where `$fieldName` like ? ';
@@ -140,13 +148,13 @@ when it was expected to exist''');
     return rows.first;
   }
 
-  Future<List<E>> getRowsByFieldInt(String fieldName, int fieldValue)  =>
+  Future<List<E>> getRowsByFieldInt(String fieldName, int fieldValue) =>
       getListByField(fieldName, '$fieldValue');
 
-  Future<E?> getByFieldInt(String fieldName, int fieldValue)  =>
+  Future<E?> getByFieldInt(String fieldName, int fieldValue) =>
       tryByField(fieldName, '$fieldValue');
 
-  Future<E?> getByFieldDate(String fieldName, DateTime fieldValue)  {
+  Future<E?> getByFieldDate(String fieldName, DateTime fieldValue) {
     final formatter = DateFormat('yyyy-MM-dd');
     final formatted = formatter.format(fieldValue);
     return tryByField(fieldName, formatted);
@@ -167,7 +175,7 @@ when it was expected to exist''');
     return trySingle(await query(sql, values));
   }
 
-  Future<List<E>> getAll()  {
+  Future<List<E>> getAll() {
     var sql = 'select * from $_tablename';
     final values = <String>[];
     sql = appendTenantClause(sql, values);
@@ -184,7 +192,7 @@ when it was expected to exist''');
 
   Iterable<E> fromRows(List<Row> rows) => rows.map(callFromRow);
 
-  Future<int> persist(Entity<E> entity)  {
+  Future<int> persist(Entity<E> entity) {
     final fields = entity.fields;
     final values = convertToDb(entity.values);
     prepareInsert(fields, values);
@@ -274,3 +282,10 @@ when it was expected to exist''');
 }
 
 enum SortDirection { asc, desc }
+
+extension _IResultSetAffectedRows on IResultSet {
+  int affectedRowsAsInt() {
+    final ar = affectedRows;
+    return ar.toInt();
+  }
+}
