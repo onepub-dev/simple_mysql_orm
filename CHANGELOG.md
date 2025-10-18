@@ -1,3 +1,6 @@
+# 6.1.0
+- Upgraded to dcli 8.1
+
 # 6.0.0
 - Fixed
 Eliminated a serious server-side prepared statement leak caused by unfreed PreparedStmt handles.
