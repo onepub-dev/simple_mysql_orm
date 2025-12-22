@@ -1,3 +1,4 @@
+
 # A simple ORM for MySQL
 
 simple_mysql_orm provides a thin wrapper for the galileo_mysql package adding
@@ -146,8 +147,9 @@ Future<void> main() async {
   SettingsYaml.fromString(content: settingsYaml, filePath: 'settings.yaml')
       .save();
 
-  /// Initialise the db pool from the setings.
-  DbPool.fromSettings(pathToSettings: 'settings.yaml');
+  /// Initialise the db pool from the setings (or one of the other
+  /// fromXXX methods)
+  final pool = DbPool.fromSettings(pathToSettings: 'settings.yaml');
 
   /// create a transaction and run a set of queries
   /// within the transaction.
@@ -180,6 +182,8 @@ Future<void> main() async {
     /// changed my mind
     Transaction.current.rollback();
   });
+  // close the pool to ensure a clean shutdown
+  await pool.close();
 }
 
 const settingsYaml = '''

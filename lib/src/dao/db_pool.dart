@@ -16,6 +16,10 @@ import 'shared_pool.dart';
 import 'transaction.dart';
 
 /// A pool of database connections.
+/// You will need one pool per isolate as Dart shares nothing between isolates.
+///
+/// Ensure you close the pool when you are done with it as the process/isolate
+/// will not exit until the pool is closed.
 class DbPool {
   static DbPool? _self;
 
@@ -56,6 +60,8 @@ class DbPool {
   /// }
   /// , dbPool: pool
   /// );
+  /// await pool.close();
+  /// ```
   ///
   /// You can override the min no. of connections in the pool by passing in
   /// [overrideMin]. This is mainly for unit testing.
@@ -196,7 +202,7 @@ class DbPool {
   int get size => pool.size;
 
   /// obtains a wrapper containg a [Db] connection
-  Future<ConnectionWrapper<Db>> obtain()  {
+  Future<ConnectionWrapper<Db>> obtain() {
     if (!open) {
       throw MySqlORMException('The DbPool has already been closed');
     }
