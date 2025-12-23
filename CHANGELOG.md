@@ -1,3 +1,6 @@
+# 6.3.1
+- updated the readme/api doc to highlight the need to close a pool to enusre the process closes cleaning.
+
 # 6.3.0
 - upgraded to dcli 8.2.0
 
