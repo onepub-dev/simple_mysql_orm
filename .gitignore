@@ -23,4 +23,4 @@ doc/api/
 test/settings.yaml
 .failed_tracker
 .vscode/launch.json
-README.md
+custom_lint.log
