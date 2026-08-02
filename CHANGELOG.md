@@ -1,4 +1,5 @@
-# 6.4.1
+# 6.5.0
+- Bound MySQL retries and operation timeouts
 - Reduced failed connection retries from 30 to 5.
 - Added configurable connection, pool acquisition, and query timeouts.
 - Discarded failed connections and connections that open after their deadline.
