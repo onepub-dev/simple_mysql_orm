@@ -43,6 +43,18 @@ class SharedPool<T extends Transactionable> implements Pool<T> {
 
   final Duration excessDuration;
 
+  /// Maximum number of attempts to open a replacement connection.
+  final int maxConnectionAttempts;
+
+  /// Maximum time allowed for one connection open or health check.
+  final Duration connectionAttemptTimeout;
+
+  /// Delay between failed connection attempts.
+  final Duration retryDelay;
+
+  /// Maximum time to wait for an in-use connection to be released.
+  final Duration acquireTimeout;
+
   late Timer _releaseTimer;
 
   /// Used to track the set of connections and whether
@@ -58,6 +70,10 @@ class SharedPool<T extends Transactionable> implements Pool<T> {
     required this.excessDuration,
     this.minSize = 10,
     this.maxSize = 10,
+    this.maxConnectionAttempts = 5,
+    this.connectionAttemptTimeout = const Duration(seconds: 10),
+    this.retryDelay = const Duration(seconds: 10),
+    this.acquireTimeout = const Duration(seconds: 30),
   }) {
     if (minSize < 0) {
       throw ConfigurationException(
@@ -66,6 +82,10 @@ class SharedPool<T extends Transactionable> implements Pool<T> {
     if (maxSize < minSize) {
       throw ConfigurationException('The DBPool maxSize must be >= minSize. '
           'Found minSize: $minSize maxSize: $maxSize');
+    }
+    if (maxConnectionAttempts < 1) {
+      throw ConfigurationException(
+          'The DBPool must make at least one connection attempt');
     }
 
     // we start in a state where we have connections available.
@@ -78,12 +98,33 @@ class SharedPool<T extends Transactionable> implements Pool<T> {
   int get size => _pool.length;
 
   Future<ConnectionWrapper<T>> _createNew() async {
-    final n = await manager.open();
+    final open = manager.open();
+    late final T n;
+    try {
+      n = await open.timeout(connectionAttemptTimeout);
+    } on TimeoutException {
+      unawaited(
+        open.then(_closeLateConnection, onError: (Object _, StackTrace __) {}),
+      );
+      rethrow;
+    }
     final conn = ConnectionWrapper._(this, n);
     _pool[conn] = false;
     logger.finer(() => 'Created new connection: ${conn.wrapped.id}');
 
     return conn;
+  }
+
+  Future<void> _closeLateConnection(T connection) async {
+    try {
+      await manager.close(connection).timeout(connectionAttemptTimeout);
+    } catch (error, stackTrace) {
+      logger.warning(
+        'Failed closing a connection that completed after its timeout',
+        error,
+        stackTrace,
+      );
+    }
   }
 
   /// Returns a connection
@@ -101,7 +142,7 @@ class SharedPool<T extends Transactionable> implements Pool<T> {
       available = Completer<bool>();
       // wait for a connection to become available
       logger.finer(() => 'awaiting connection');
-      await available.future;
+      await available.future.timeout(acquireTimeout);
       return _allocate(_findUnusedConnection()!);
     }
 
@@ -199,56 +240,56 @@ class SharedPool<T extends Transactionable> implements Pool<T> {
   /// then an exception will be thrown.
   Future<ConnectionWrapper<T>> _validConnection(
       ConnectionWrapper<T>? conn) async {
-    var conn0 = conn;
-    var retries = 30;
-    var success = false;
-
     String? lastError;
-    while (!success && retries > 0) {
+
+    if (conn != null) {
       try {
-        if (conn0 != null && await conn0.wrapped.test()) {
-          success = true;
-          if (lastError != null) {
-            logger.warning('Connection to MySQL succeeded.');
-          }
-          break;
-        } else {
-          if (conn0 != null) {
-            _removeBadConnection(conn0);
-            conn0 = null;
-          }
-          retries--;
-          conn0 = await _createNew();
-          success = true;
-          break;
+        if (await conn.wrapped.test().timeout(connectionAttemptTimeout)) {
+          return conn;
         }
       } catch (e) {
-        // remove the bad connection
-        _removeBadConnection(conn0);
-        conn0 = null;
         lastError = e.toString();
-        if (e is MySqlException) {
-          /// no point retrying if its access denied.
-          if (e.message.contains('Access denied for user')) {
-            break;
-          } else {
-            await _logAndWait(lastError);
-          }
-        }
-        if (e is StateError || e is MySqlException || e is SocketException) {
-          await _logAndWait(lastError);
-        } else {
+        if (!_isRetryable(e)) {
           rethrow;
         }
       }
-    }
-    if (!success) {
-      logger.severe('Unable to connect to db. $lastError');
-      throw MySqlORMException('Unable to connect to db. $lastError');
+      await _removeBadConnection(conn);
     }
 
-    return conn0!;
+    for (var attempt = 1; attempt <= maxConnectionAttempts; attempt++) {
+      try {
+        final replacement = await _createNew();
+        if (lastError != null) {
+          logger.warning('Connection to MySQL succeeded.');
+        }
+        return replacement;
+      } catch (e) {
+        lastError = e.toString();
+        if (_isAccessDenied(e)) {
+          break;
+        }
+        if (!_isRetryable(e)) {
+          rethrow;
+        }
+        if (attempt < maxConnectionAttempts) {
+          await _logAndWait(lastError);
+        }
+      }
+    }
+
+    logger.severe('Unable to connect to db. $lastError');
+    throw MySqlORMException('Unable to connect to db. $lastError');
   }
+
+  bool _isAccessDenied(Object error) =>
+      error is MySqlException &&
+      error.message.contains('Access denied for user');
+
+  bool _isRetryable(Object error) =>
+      error is StateError ||
+      error is MySqlException ||
+      error is SocketException ||
+      error is TimeoutException;
 
   /// Throws a MySQLException if we find a connection
   /// that hasn't been released or is still in a transaction.
@@ -284,16 +325,23 @@ class SharedPool<T extends Transactionable> implements Pool<T> {
 
   Future<void> _logAndWait(String message) async {
     logger.warning('Connection attempt failed: $message. '
-        'Retrying in 10 seconds');
-    // sleep 10 secondss
-    await Future.delayed(const Duration(seconds: 10), () => null);
+        'Retrying in ${retryDelay.inSeconds} seconds');
+    await Future<void>.delayed(retryDelay);
   }
 
-  void _removeBadConnection(ConnectionWrapper<T>? conn) {
+  Future<void> _removeBadConnection(ConnectionWrapper<T>? conn) async {
     if (conn != null) {
       logger.warning(() => 'Found bad connection: ${conn.id}. Replacing it.');
-      // remove the invalid connection
       _pool.remove(conn);
+      try {
+        await manager.close(conn.wrapped).timeout(connectionAttemptTimeout);
+      } catch (error, stackTrace) {
+        logger.fine(
+          'Failed closing discarded connection ${conn.id}',
+          error,
+          stackTrace,
+        );
+      }
     }
   }
 }

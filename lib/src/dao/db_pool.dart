@@ -141,6 +141,11 @@ class DbPool {
     int minSize = 5,
     int maxSize = 50,
     bool useSSL = true,
+    int maxConnectionAttempts = 5,
+    Duration connectionAttemptTimeout = const Duration(seconds: 10),
+    Duration retryDelay = const Duration(seconds: 10),
+    Duration acquireTimeout = const Duration(seconds: 30),
+    Duration queryTimeout = const Duration(seconds: 30),
   }) =>
       _self = DbPool._internal(
           host: host,
@@ -150,7 +155,12 @@ class DbPool {
           database: database,
           minSize: minSize,
           maxSize: maxSize,
-          useSSL: useSSL);
+          useSSL: useSSL,
+          maxConnectionAttempts: maxConnectionAttempts,
+          connectionAttemptTimeout: connectionAttemptTimeout,
+          retryDelay: retryDelay,
+          acquireTimeout: acquireTimeout,
+          queryTimeout: queryTimeout);
 
   factory DbPool.fromEnv() {
     final user = Db.getEnv(Db.mysqlUsernameKey);
@@ -179,6 +189,11 @@ class DbPool {
     required int minSize,
     required int maxSize,
     required bool useSSL,
+    int maxConnectionAttempts = 5,
+    Duration connectionAttemptTimeout = const Duration(seconds: 10),
+    Duration retryDelay = const Duration(seconds: 10),
+    Duration acquireTimeout = const Duration(seconds: 30),
+    Duration queryTimeout = const Duration(seconds: 30),
     String? database,
     Duration excessDuration = const Duration(minutes: 1),
   })  : _database = database,
@@ -189,10 +204,16 @@ class DbPool {
               user: user,
               password: password,
               db: database,
-              useSSL: useSSL)),
+              useSSL: useSSL,
+              connectionTimeout: connectionAttemptTimeout,
+              queryTimeout: queryTimeout)),
           minSize: minSize,
           maxSize: maxSize,
           excessDuration: excessDuration,
+          maxConnectionAttempts: maxConnectionAttempts,
+          connectionAttemptTimeout: connectionAttemptTimeout,
+          retryDelay: retryDelay,
+          acquireTimeout: acquireTimeout,
         );
 
   /// Returns the database name this pool is attached to.

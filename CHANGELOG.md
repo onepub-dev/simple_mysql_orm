@@ -1,3 +1,9 @@
+# 6.4.1
+- Reduced failed connection retries from 30 to 5.
+- Added configurable connection, pool acquisition, and query timeouts.
+- Discarded failed connections and connections that open after their deadline.
+- Fixed MySQL failures waiting twice between connection attempts.
+
 # 6.4.0
 - upgraded to dcli 9.x
 

@@ -73,6 +73,8 @@ class Db implements Transactionable {
         user: settings.user,
         password: settings.password,
         useSSL: settings.useSSL,
+        connectionTimeout: settings.connectionTimeout,
+        queryTimeout: settings.queryTimeout,
       );
 
   factory Db.fromSettings(ConnectionSettings settings) => Db._internal(
@@ -82,6 +84,8 @@ class Db implements Transactionable {
         user: settings.user,
         password: settings.password,
         useSSL: settings.useSSL,
+        connectionTimeout: settings.connectionTimeout,
+        queryTimeout: settings.queryTimeout,
       );
 
   Db._internal({
@@ -91,6 +95,8 @@ class Db implements Transactionable {
     required String password,
     required String? database,
     required bool useSSL,
+    Duration connectionTimeout = const Duration(seconds: 10),
+    Duration queryTimeout = const Duration(seconds: 30),
   }) {
     id = _nextId;
     settings = ConnectionSettings(
@@ -100,6 +106,8 @@ class Db implements Transactionable {
       password: password,
       db: database,
       useSSL: useSSL,
+      connectionTimeout: connectionTimeout,
+      queryTimeout: queryTimeout,
     );
   }
 
@@ -134,14 +142,15 @@ class Db implements Transactionable {
         'values:[${_expandValues(values)}]');
 
     PreparedStmt? stmt;
-    IResultSet? rs;
+    late final IResultSet rs;
     try {
       if (values == null || values.isEmpty) {
         // Text protocol; no server-side PS.
-        rs = await connection.execute(query);
+        rs = await _runQuery(connection.execute(query));
       } else {
-        stmt = await connection.prepare(query); // alloc server PS
-        rs = await stmt.execute(values);
+        final prepared = await _runQuery(connection.prepare(query));
+        stmt = prepared;
+        rs = await _runQuery(prepared.execute(values));
       }
       _localQueryCount++;
       queryCount++;
@@ -169,6 +178,19 @@ class Db implements Transactionable {
     }
   }
 
+  Future<T> _runQuery<T>(Future<T> query) async {
+    try {
+      return await query.timeout(settings.queryTimeout);
+    } on TimeoutException {
+      try {
+        await close().timeout(settings.connectionTimeout);
+      } catch (_) {
+        _connection = null;
+      }
+      rethrow;
+    }
+  }
+
   static String getEnv(String key, {String? defaultValue}) {
     final value = env[key] ?? defaultValue;
     if (value == null) {
@@ -181,9 +203,11 @@ class Db implements Transactionable {
     inTransaction = true;
     try {
       late final R result;
-      await _connection!.transactional((dynamic _) async {
-        result = await action();
-      });
+      await _runQuery(
+        _connection!.transactional((dynamic _) async {
+          result = await action();
+        }),
+      );
       return result;
     } finally {
       inTransaction = false;
