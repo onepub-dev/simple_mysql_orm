@@ -1,9 +1,6 @@
 # 6.6.0
-- Restored pooled connections automatically after a MySQL server restart.
-- Discarded connections that fail validation so they do not remain allocated
-  and consume pool capacity.
-- Stopped retrying immediately when MySQL rejects a connection with access
-  denied error 1045.
+- test mysql pool recovery failure paths
+- fix pool recovery after mysql restart
 
 # 6.5.0
 - Bound MySQL retries and operation timeouts
