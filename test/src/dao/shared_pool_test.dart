@@ -77,6 +77,88 @@ void main() {
     await pool.release(replacement);
     await pool.close();
   });
+
+  test('evicts a pooled connection after a non-retryable test error', () async {
+    final manager = _RestartingManager();
+    final pool = SharedPool<_RestartingConnection>(
+      manager,
+      minSize: 0,
+      maxSize: 1,
+      excessDuration: const Duration(days: 1),
+      retryDelay: Duration.zero,
+    );
+
+    final original = await pool.obtain();
+    await pool.release(original);
+    original.wrapped.testError = const FormatException('invalid response');
+
+    await expectLater(pool.obtain(), throwsA(isA<FormatException>()));
+
+    expect(manager.closedIds, [original.id]);
+    expect(pool.size, 0);
+
+    final replacement = await pool.obtain();
+    expect(replacement.id, isNot(original.id));
+
+    await pool.release(replacement);
+    await pool.close();
+  });
+
+  test('does not retry access denied errors', () async {
+    final manager = _AccessDeniedManager();
+    final pool = SharedPool<_FakeConnection>(
+      manager,
+      minSize: 0,
+      maxSize: 1,
+      excessDuration: const Duration(days: 1),
+      retryDelay: Duration.zero,
+    );
+
+    await expectLater(
+      pool.obtain(),
+      throwsA(
+        isA<MySqlORMException>().having(
+          (error) => error.toString(),
+          'message',
+          contains('Access denied for user'),
+        ),
+      ),
+    );
+
+    expect(manager.openCalls, 1);
+    expect(pool.size, 0);
+    await pool.close();
+  });
+
+  test('can recover after replacement attempts are exhausted', () async {
+    final manager = _RestartingManager();
+    final pool = SharedPool<_RestartingConnection>(
+      manager,
+      minSize: 0,
+      maxSize: 1,
+      excessDuration: const Duration(days: 1),
+      retryDelay: Duration.zero,
+    );
+
+    final original = await pool.obtain();
+    await pool.release(original);
+    original.wrapped.closedByServer = true;
+    manager.failOpens = true;
+
+    await expectLater(pool.obtain(), throwsA(isA<MySqlORMException>()));
+
+    expect(manager.openCalls, 6);
+    expect(manager.closedIds, [original.id]);
+    expect(pool.size, 0);
+
+    manager.failOpens = false;
+    final replacement = await pool.obtain();
+    expect(replacement.id, isNot(original.id));
+    expect(pool.size, 1);
+
+    await pool.release(replacement);
+    await pool.close();
+  });
 }
 
 class _FailingManager implements ConnectionManager<_FakeConnection> {
@@ -109,13 +191,34 @@ class _DelayedManager implements ConnectionManager<_FakeConnection> {
   }
 }
 
-class _RestartingManager implements ConnectionManager<_RestartingConnection> {
-  final closedIds = <int>[];
+class _AccessDeniedManager implements ConnectionManager<_FakeConnection> {
   var openCalls = 0;
 
   @override
-  Future<_RestartingConnection> open() async =>
-      _RestartingConnection(++openCalls);
+  Future<_FakeConnection> open() {
+    openCalls++;
+    return Future.error(
+      const MySQLServerException('Access denied for user', 1045),
+    );
+  }
+
+  @override
+  Future<void> close(_FakeConnection connection) async {}
+}
+
+class _RestartingManager implements ConnectionManager<_RestartingConnection> {
+  final closedIds = <int>[];
+  var failOpens = false;
+  var openCalls = 0;
+
+  @override
+  Future<_RestartingConnection> open() {
+    openCalls++;
+    if (failOpens) {
+      return Future.error(const SocketException('unavailable'));
+    }
+    return Future.value(_RestartingConnection(openCalls));
+  }
 
   @override
   Future<void> close(_RestartingConnection connection) async {
@@ -128,6 +231,7 @@ class _RestartingConnection implements Transactionable {
   final int id;
 
   var closedByServer = false;
+  Exception? testError;
 
   _RestartingConnection(this.id);
 
@@ -139,6 +243,10 @@ class _RestartingConnection implements Transactionable {
 
   @override
   Future<bool> test() async {
+    final error = testError;
+    if (error != null) {
+      throw error;
+    }
     if (closedByServer) {
       throw const MySQLClientException(
         'Can not execute query: connection closed',
