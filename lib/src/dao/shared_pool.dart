@@ -8,6 +8,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:logging/logging.dart';
+import 'package:mysql_client/exception.dart' as mysql_client;
 
 import '../exceptions.dart';
 import '../util/my_sql_exception.dart';
@@ -249,11 +250,15 @@ class SharedPool<T extends Transactionable> implements Pool<T> {
         }
       } catch (e) {
         lastError = e.toString();
+        await _removeBadConnection(conn);
         if (!_isRetryable(e)) {
           rethrow;
         }
+        conn = null;
       }
-      await _removeBadConnection(conn);
+      if (conn != null) {
+        await _removeBadConnection(conn);
+      }
     }
 
     for (var attempt = 1; attempt <= maxConnectionAttempts; attempt++) {
@@ -282,12 +287,14 @@ class SharedPool<T extends Transactionable> implements Pool<T> {
   }
 
   bool _isAccessDenied(Object error) =>
-      error is MySqlException &&
-      error.message.contains('Access denied for user');
+      (error is MySqlException &&
+          error.message.contains('Access denied for user')) ||
+      (error is mysql_client.MySQLServerException && error.errorCode == 1045);
 
   bool _isRetryable(Object error) =>
       error is StateError ||
       error is MySqlException ||
+      error is mysql_client.MySQLClientException ||
       error is SocketException ||
       error is TimeoutException;
 

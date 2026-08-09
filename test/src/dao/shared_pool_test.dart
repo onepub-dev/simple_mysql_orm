@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:mysql_client/exception.dart';
 import 'package:simple_mysql_orm/simple_mysql_orm.dart';
 import 'package:simple_mysql_orm/src/dao/shared_pool.dart';
 import 'package:test/test.dart';
@@ -51,6 +52,31 @@ void main() {
     expect(pool.size, 0);
     await pool.close();
   });
+
+  test('replaces a pooled connection closed by the server', () async {
+    final manager = _RestartingManager();
+    final pool = SharedPool<_RestartingConnection>(
+      manager,
+      minSize: 0,
+      maxSize: 1,
+      excessDuration: const Duration(days: 1),
+      retryDelay: Duration.zero,
+    );
+
+    final original = await pool.obtain();
+    await pool.release(original);
+    original.wrapped.closedByServer = true;
+
+    final replacement = await pool.obtain();
+
+    expect(replacement.id, isNot(original.id));
+    expect(manager.openCalls, 2);
+    expect(manager.closedIds, [original.id]);
+    expect(pool.size, 1);
+
+    await pool.release(replacement);
+    await pool.close();
+  });
 }
 
 class _FailingManager implements ConnectionManager<_FakeConnection> {
@@ -80,6 +106,45 @@ class _DelayedManager implements ConnectionManager<_FakeConnection> {
   Future<void> close(_FakeConnection connection) async {
     closeCalls++;
     closed.complete();
+  }
+}
+
+class _RestartingManager implements ConnectionManager<_RestartingConnection> {
+  final closedIds = <int>[];
+  var openCalls = 0;
+
+  @override
+  Future<_RestartingConnection> open() async =>
+      _RestartingConnection(++openCalls);
+
+  @override
+  Future<void> close(_RestartingConnection connection) async {
+    closedIds.add(connection.id);
+  }
+}
+
+class _RestartingConnection implements Transactionable {
+  @override
+  final int id;
+
+  var closedByServer = false;
+
+  _RestartingConnection(this.id);
+
+  @override
+  bool get inTransaction => false;
+
+  @override
+  Future<void> close() async {}
+
+  @override
+  Future<bool> test() async {
+    if (closedByServer) {
+      throw const MySQLClientException(
+        'Can not execute query: connection closed',
+      );
+    }
+    return true;
   }
 }
 
