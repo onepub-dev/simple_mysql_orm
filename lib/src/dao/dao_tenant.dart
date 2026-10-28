@@ -7,6 +7,7 @@
 import 'package:meta/meta.dart';
 
 import '../../simple_mysql_orm.dart';
+import '../util/sql_identifier.dart';
 
 abstract class DaoTenant<E extends EntityTenant<E>> extends Dao<E> {
   String tenantFieldName;
@@ -17,10 +18,40 @@ abstract class DaoTenant<E extends EntityTenant<E>> extends Dao<E> {
   DaoTenant.withDb(super.db, super._tablename, {required this.tenantFieldName})
       : super.withDb();
 
-  /// Assumes that the last clause in [query] is a where clause
-  /// and appends the tenant id if we are in tenant mode.
-  Future<List<E>> queryTenant(String query, ValueList values)  =>
-      this.query(appendTenantWhere(query), appendTenantValue(values));
+  /// Adds a tenant predicate to a simple SELECT from this DAO's table.
+  ///
+  /// Other query shapes must use [query] with an explicit tenant predicate.
+  Future<List<E>> queryTenant(String query, ValueList values) {
+    _requireTenantScope();
+    if (Tenant.inTenantBypassScope) {
+      return this.query(query, values);
+    }
+    final table = getTablename();
+    final pattern = RegExp(
+        '^select\\s+\\*\\s+from\\s+`?${RegExp.escape(table)}`?\\s+where\\s+([\\s\\S]+)\$',
+        caseSensitive: false);
+    final match = pattern.firstMatch(query.trim());
+    final predicate = match?.group(1)?.trim();
+    if (predicate == null ||
+        predicate.isEmpty ||
+        predicate.contains(';') ||
+        predicate.contains('(') ||
+        predicate.contains(')') ||
+        predicate.contains('--') ||
+        predicate.contains('/*') ||
+        predicate.contains('#') ||
+        RegExp(r'\b(select|union|join|group|order|having|limit|offset|window|over|for|lock)\b',
+                caseSensitive: false)
+            .hasMatch(predicate)) {
+      throw ArgumentError('queryTenant requires SELECT * FROM the DAO table '
+          'WHERE a simple predicate without trailing clauses.');
+    }
+    final tenantColumn = sqlIdentifier(tenantFieldName);
+    return this.query(
+        'select * from ${sqlIdentifier(table)} '
+        'where ($predicate) and $tenantColumn = ?',
+        [...values, Tenant.tenantId]);
+  }
 
   @override
   Future<List<E>> getListByField(String fieldName, String fieldValue,
@@ -28,22 +59,24 @@ abstract class DaoTenant<E extends EntityTenant<E>> extends Dao<E> {
       int offset = 0,
       int limit = 20,
       String? orderBy,
-      SortDirection sortDirection = SortDirection.asc})  {
-    var sql = 'select * from ${getTablename()} ';
+      SortDirection sortDirection = SortDirection.asc}) {
+    var sql =
+        'select * from ${sqlIdentifier(getTablename(), qualified: true)} ';
 
     final values = [fieldValue];
+    final column = sqlIdentifier(fieldName);
 
     if (like) {
-      sql += 'where `$fieldName` like ? ';
+      sql += 'where $column like ? ';
     } else {
-      sql += 'where `$fieldName` = ? ';
+      sql += 'where $column = ? ';
     }
 
     sql = appendTenantWhere(sql);
     appendTenantValue(values);
 
     if (orderBy != null) {
-      sql += 'order by $orderBy ${sortDirection.name} ';
+      sql += 'order by ${sqlOrderBy(orderBy)} ${sortDirection.name} ';
     }
 
     sql += 'limit $offset, $limit ';
@@ -52,6 +85,7 @@ abstract class DaoTenant<E extends EntityTenant<E>> extends Dao<E> {
   }
 
   String appendTenantWhere(String sql, {bool addWhere = false}) {
+    _requireTenantScope();
     if (Tenant.inTenantScope) {
       if (addWhere) {
         sql += ' where ';
@@ -59,7 +93,9 @@ abstract class DaoTenant<E extends EntityTenant<E>> extends Dao<E> {
         sql += ' and ';
       }
 
-      sql += '`${getTablename()}`.`$tenantFieldName`= ? ';
+      final table = sqlIdentifier(getTablename(), qualified: true);
+      final column = sqlIdentifier(tenantFieldName);
+      sql += '$table.$column= ? ';
     }
     return sql;
   }
@@ -72,6 +108,7 @@ abstract class DaoTenant<E extends EntityTenant<E>> extends Dao<E> {
   }
 
   ValueList appendTenantValue(List<Object?> values) {
+    _requireTenantScope();
     if (Tenant.inTenantScope) {
       values.add('${Tenant.tenantId}');
     }
@@ -90,6 +127,7 @@ abstract class DaoTenant<E extends EntityTenant<E>> extends Dao<E> {
   /// mis-configured.
   @override
   void validate(String query) {
+    _requireTenantScope();
     if (!Tenant.inTenantBypassScope) {
       // if (!Tenant.hasTenantId) {
       //   /// oops. [dao] is a tenant but no tenant id has been passed.
@@ -111,9 +149,17 @@ abstract class DaoTenant<E extends EntityTenant<E>> extends Dao<E> {
   @protected
   @override
   void prepareInsert(FieldList fields, List<String?> values) {
+    _requireTenantScope();
     if (!Tenant.inTenantBypassScope) {
       fields.add(tenantFieldName);
       values.add('${Tenant.tenantId}');
+    }
+  }
+
+  void _requireTenantScope() {
+    if (!Tenant.inTenantScope && !Tenant.inTenantBypassScope) {
+      throw MissingTenantException(
+          'A tenant DAO requires withTenant or withTenantByPass.');
     }
   }
 }

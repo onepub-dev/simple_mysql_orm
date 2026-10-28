@@ -12,6 +12,7 @@ import 'package:dcli/dcli.dart' hide Column;
 import 'package:simple_mysql_orm/simple_mysql_orm.dart';
 import 'package:simple_mysql_orm/src/generator/dao.dart';
 import 'package:simple_mysql_orm/src/generator/model.dart';
+import 'package:simple_mysql_orm/src/util/sql_identifier.dart';
 
 /// Creates a Dao and Model class from a table by getting the
 /// table structure from the db.
@@ -63,7 +64,7 @@ Future<void> main(List<String> args) async {
 
 Future<void> _createDao({required String tablename, String? filename}) async {
   await withTransaction(action: () async {
-    final rows = await tquery('SHOW COLUMNS from $tablename');
+    final rows = await tquery('SHOW COLUMNS from ${sqlIdentifier(tablename)}');
 
     final columns = <Column>[];
 

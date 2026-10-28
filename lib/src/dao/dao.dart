@@ -13,6 +13,7 @@ import 'package:mysql_client/mysql_client.dart';
 
 import '../../simple_mysql_orm.dart';
 import '../builder/builder.dart';
+import '../util/sql_identifier.dart';
 
 abstract class Dao<E> {
   Db db;
@@ -68,10 +69,8 @@ abstract class Dao<E> {
     final list = await this.query(query, values);
     final entity = await trySingle(list);
     if (entity == null) {
-      throw DatabaseIntegrityException('''
-Failed to retrieve a single row using 
-$query, ${values.join(',')}
-when it was expected to exist''');
+      throw DatabaseIntegrityException(
+          'Failed to retrieve a single row when one was expected.');
     }
     return entity;
   }
@@ -89,7 +88,7 @@ when it was expected to exist''');
       }
       if (rs.rows.length != 1) {
         throw TooManyResultsException(
-          'Multiple rows from ${query}s matched when only one was expected.',
+          'Multiple rows matched when only one was expected.',
         );
       }
       final row = Row(rs.rows.first);
@@ -107,14 +106,15 @@ when it was expected to exist''');
     String? orderBy,
     SortDirection sortDirection = SortDirection.asc,
   }) {
-    var sql = 'select * from $_tablename ';
+    var sql = 'select * from ${sqlIdentifier(_tablename, qualified: true)} ';
+    final column = sqlIdentifier(fieldName);
     if (like) {
-      sql += 'where `$fieldName` like ? ';
+      sql += 'where $column like ? ';
     } else {
-      sql += 'where `$fieldName` = ? ';
+      sql += 'where $column = ? ';
     }
     if (orderBy != null) {
-      sql += 'order by $orderBy ${sortDirection.name} ';
+      sql += 'order by ${sqlOrderBy(orderBy)} ${sortDirection.name} ';
     }
     sql += 'limit $offset, $limit ';
     return query(sql, [fieldValue]);
@@ -126,7 +126,7 @@ when it was expected to exist''');
         await getListByField(fieldName, fieldValue, like: like));
     if (entity == null) {
       throw DatabaseIntegrityException(
-        '''Failed to retrieve $fieldName=$fieldValue from $_tablename when it was expected to exist''',
+        'Failed to retrieve the expected row from $_tablename.',
       );
     }
     return entity;
@@ -163,22 +163,23 @@ when it was expected to exist''');
   Future<E> getById(int id) async {
     final e = await tryById(id);
     if (e == null) {
-      throw UnknownEntityIdException('Id $id not found in $_tablename');
+      throw UnknownEntityIdException('Entity not found in $_tablename');
     }
     return e;
   }
 
   Future<E?> tryById(int id) async {
-    var sql = 'select * from $_tablename where id = ?';
+    final table = sqlIdentifier(_tablename, qualified: true);
+    var sql = 'select * from $table where id = ?';
     final values = ['$id'];
     sql = appendTenantClause(sql, values);
     return trySingle(await query(sql, values));
   }
 
   Future<List<E>> getAll() {
-    var sql = 'select * from $_tablename';
+    var sql = 'select * from ${sqlIdentifier(_tablename, qualified: true)}';
     final values = <String>[];
-    sql = appendTenantClause(sql, values);
+    sql = appendTenantClause(sql, values, addWhere: true);
     return query(sql, values);
   }
 
@@ -198,8 +199,9 @@ when it was expected to exist''');
     prepareInsert(fields, values);
 
     final placeholders = '${'?, ' * (fields.length - 1)}?';
-    final sql = 'insert into $_tablename '
-        '(`${fields.join("`,`")}`) values ($placeholders)';
+    final columns = fields.map(sqlIdentifier).join(', ');
+    final sql = 'insert into ${sqlIdentifier(_tablename, qualified: true)} '
+        '($columns) values ($placeholders)';
 
     return db.withResults(sql,
         values: values, action: (rs) => rs.lastInsertID.toInt());
@@ -213,8 +215,10 @@ when it was expected to exist''');
     final fields = entity.fields;
     final values = convertToDb(entity.values);
 
-    var sql = 'update $_tablename '
-        'set `${fields.join("`=?, `")}`=? '
+    final assignments =
+        fields.map((field) => '${sqlIdentifier(field)}=?').join(', ');
+    var sql = 'update ${sqlIdentifier(_tablename, qualified: true)} '
+        'set $assignments '
         'where id=?';
 
     values.add('${entity.id}');
@@ -224,21 +228,23 @@ when it was expected to exist''');
   }
 
   Future<void> remove(Entity<E> entity) async {
-    var sql = 'delete from $_tablename where id = ?';
+    final table = sqlIdentifier(_tablename, qualified: true);
+    var sql = 'delete from $table where id = ?';
     final values = <String>['${entity.id}'];
     sql = appendTenantClause(sql, values);
     await db.withResults(sql, values: values, action: (_) {});
   }
 
   Future<void> removeAll() async {
-    var sql = 'delete from $_tablename ';
+    var sql = 'delete from ${sqlIdentifier(_tablename, qualified: true)} ';
     final values = <String>[];
     sql = appendTenantClause(sql, values, addWhere: true);
     await db.withResults(sql, values: values, action: (_) {});
   }
 
   Future<void> removeById(int id) async {
-    var sql = 'delete from $_tablename where id = ?';
+    final table = sqlIdentifier(_tablename, qualified: true);
+    var sql = 'delete from $table where id = ?';
     final values = <String>['$id'];
     sql = appendTenantClause(sql, values);
     await db.withResults(sql, values: values, action: (_) {});

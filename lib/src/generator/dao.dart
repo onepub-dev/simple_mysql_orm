@@ -9,9 +9,11 @@ import 'package:recase/recase.dart';
 
 import '../../simple_mysql_orm.dart';
 import 'model.dart';
+import 'validate_names.dart';
 
 /// throws [DaoFileExistsException] if the output file already exists.
 void generateDao(String tablename, List<Column> columns, {String? filename}) {
+  validateGeneratedNames(tablename, columns);
   // we needed a non-const init
   // ignore: no_leading_underscores_for_local_identifiers
   final _filename = filename ??= 'dao_${ReCase(tablename).snakeCase}.dart';

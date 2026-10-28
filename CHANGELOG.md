@@ -1,3 +1,23 @@
+# 6.6.1
+- Require an explicit tenant or bypass scope for tenant DAO operations and
+  constrain custom `OR` queries to the active tenant.
+- Quote generated field and sort identifiers to prevent them changing SQL
+  predicates. Custom SQL remains the caller's responsibility.
+- Keep pooled connections checked out until asynchronous actions complete,
+  enforce pool capacity under concurrent opens, and wake all waiting borrowers.
+- Honor explicitly supplied transaction pools and reject conflicting nested
+  pool selection.
+- Rollback requests now roll back the enclosing transaction and complete with
+  `TransactionRolledBackException`; transaction control commands retain timeouts.
+- Remove bound values and SQL text from library query logs and remove lookup
+  values from library-generated errors.
+- Quote schema and CLI table identifiers, bind schema lookup values, and read
+  backups before dropping a database during restore.
+- Reject table or column names that cannot be safely embedded in generated
+  Dart source.
+- Terminate timed-out MySQL sessions before returning their connections to a
+  pool; report when server-side termination cannot be confirmed.
+
 # 6.6.0
 - test mysql pool recovery failure paths
 - fix pool recovery after mysql restart

@@ -242,7 +242,7 @@ class DbPool {
   Future<T> withDb<T>({required Future<T> Function(Db db) action}) async {
     final wrapper = await obtain();
     try {
-      return action(wrapper.wrapped);
+      return await action(wrapper.wrapped);
     } finally {
       await release(wrapper);
     }

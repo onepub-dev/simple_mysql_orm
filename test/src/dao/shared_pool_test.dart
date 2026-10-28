@@ -7,6 +7,80 @@ import 'package:simple_mysql_orm/src/dao/shared_pool.dart';
 import 'package:test/test.dart';
 
 void main() {
+  test('pending opens count toward maxSize', () async {
+    final manager = _DelayedManager();
+    final pool = SharedPool<_FakeConnection>(
+      manager,
+      minSize: 0,
+      maxSize: 1,
+      excessDuration: const Duration(days: 1),
+      acquireTimeout: const Duration(seconds: 2),
+    );
+
+    final first = pool.obtain();
+    await Future<void>.delayed(Duration.zero);
+    final second = pool.obtain();
+    await Future<void>.delayed(Duration.zero);
+    expect(manager.openCalls, 1);
+
+    manager.completeOpen();
+    final firstConnection = await first;
+    await pool.release(firstConnection);
+    final secondConnection = await second;
+    expect(secondConnection.id, firstConnection.id);
+    await pool.release(secondConnection);
+    await pool.close();
+  });
+
+  test('all waiters can obtain a recycled connection', () async {
+    final manager = _RestartingManager();
+    final pool = SharedPool<_RestartingConnection>(
+      manager,
+      minSize: 0,
+      maxSize: 1,
+      excessDuration: const Duration(days: 1),
+      acquireTimeout: const Duration(seconds: 2),
+    );
+
+    final first = await pool.obtain();
+    final second = pool.obtain();
+    final third = pool.obtain();
+    await Future<void>.delayed(Duration.zero);
+    await pool.release(first);
+    final secondConnection = await second;
+    await pool.release(secondConnection);
+    final thirdConnection = await third;
+    await pool.release(thirdConnection);
+    expect(manager.openCalls, 1);
+    await pool.close();
+  });
+
+  test('slow health check does not consume another free pool slot', () async {
+    final manager = _RestartingManager();
+    final pool = SharedPool<_RestartingConnection>(
+      manager,
+      minSize: 0,
+      maxSize: 2,
+      excessDuration: const Duration(days: 1),
+      acquireTimeout: const Duration(milliseconds: 250),
+    );
+
+    final existing = await pool.obtain();
+    await pool.release(existing);
+    final gate = Completer<void>();
+    existing.wrapped.testGate = gate;
+    final checking = pool.obtain();
+    await Future<void>.delayed(Duration.zero);
+
+    final second = await pool.obtain();
+    expect(manager.openCalls, 2);
+    gate.complete();
+    final first = await checking;
+    await pool.release(first);
+    await pool.release(second);
+    await pool.close();
+  });
+
   test('stops opening connections after five attempts', () async {
     final manager = _FailingManager();
     final pool = SharedPool<_FakeConnection>(
@@ -177,12 +251,16 @@ class _FailingManager implements ConnectionManager<_FakeConnection> {
 class _DelayedManager implements ConnectionManager<_FakeConnection> {
   final _open = Completer<_FakeConnection>();
   final closed = Completer<void>();
+  var openCalls = 0;
   var closeCalls = 0;
 
   void completeOpen() => _open.complete(_FakeConnection(1));
 
   @override
-  Future<_FakeConnection> open() => _open.future;
+  Future<_FakeConnection> open() {
+    openCalls++;
+    return _open.future;
+  }
 
   @override
   Future<void> close(_FakeConnection connection) async {
@@ -232,6 +310,7 @@ class _RestartingConnection implements Transactionable {
 
   var closedByServer = false;
   Exception? testError;
+  Completer<void>? testGate;
 
   _RestartingConnection(this.id);
 
@@ -243,6 +322,9 @@ class _RestartingConnection implements Transactionable {
 
   @override
   Future<bool> test() async {
+    if (testGate != null) {
+      await testGate!.future;
+    }
     final error = testError;
     if (error != null) {
       throw error;

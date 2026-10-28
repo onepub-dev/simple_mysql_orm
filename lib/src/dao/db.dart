@@ -5,9 +5,7 @@
  */
 
 import 'dart:async';
-import 'dart:math';
 
-import 'package:collection/collection.dart';
 import 'package:dcli/dcli.dart';
 import 'package:logging/logging.dart';
 import 'package:mysql_client/mysql_client.dart';
@@ -15,7 +13,6 @@ import 'package:scope/scope.dart';
 
 import '../../simple_mysql_orm.dart';
 import '../util/connection_settings.dart';
-import '../util/my_sql_exception.dart';
 
 class Db implements Transactionable {
   final logger = Logger('Db');
@@ -41,12 +38,18 @@ class Db implements Transactionable {
 
   MySQLConnection? _connection;
 
+  int? _serverConnectionId;
+
+  var _poisoned = false;
+
   static var queryCount = 0;
 
   var _localQueryCount = 0;
 
   @override
   var inTransaction = false;
+
+  var _rollbackRequested = false;
 
   factory Db.fromEnv() {
     final user = getEnv(mysqlUsernameKey);
@@ -115,6 +118,9 @@ class Db implements Transactionable {
       use(TransactionTestScope.dbTestIdKey, withDefault: () => __nextId++);
 
   MySQLConnection get connection {
+    if (_poisoned) {
+      throw StateError('This MySQL connection timed out and cannot be reused.');
+    }
     if (_connection == null) {
       throw StateError('You must call connect() first.');
     }
@@ -122,13 +128,32 @@ class Db implements Transactionable {
   }
 
   Future<void> connect() async {
-    _connection = await settings.createConnection();
+    final opened = await settings.createConnection();
+    try {
+      final result = await opened
+          .execute('SELECT CONNECTION_ID()')
+          .timeout(settings.connectionTimeout);
+      final value = result.rows.single.colAt(0);
+      _serverConnectionId = int.parse(value!);
+      _connection = opened;
+      _poisoned = false;
+    } catch (_) {
+      try {
+        await opened.close().timeout(settings.connectionTimeout);
+      } catch (_) {
+        logger.warning('Could not close a connection during setup failure.');
+      }
+      rethrow;
+    }
   }
 
   @override
   Future<void> close() async {
-    await _connection?.close();
+    if (_connection?.connected ?? false) {
+      await _connection!.close();
+    }
     _connection = null;
+    _serverConnectionId = null;
   }
 
   /// NEW: run a query, expose `IResultSet` to a callback, then free any PS.
@@ -138,8 +163,8 @@ class Db implements Transactionable {
     required FutureOr<T> Function(IResultSet rs) action,
     ValueList? values,
   }) async {
-    logger.fine(() => 'Db: $id qid: $_localQueryCount ${_colour(query)}, '
-        'values:[${_expandValues(values)}]');
+    logger.fine(() => 'Db: $id qid: $_localQueryCount '
+        '${_queryOperation(query)}, parameterCount:${values?.length ?? 0}');
 
     PreparedStmt? stmt;
     late final IResultSet rs;
@@ -155,16 +180,6 @@ class Db implements Transactionable {
       _localQueryCount++;
       queryCount++;
       return await action(rs);
-    } on MySqlException catch (e) {
-      final userStack = StackTrace.current;
-      logger.severe(
-        'Db: $id qid: $_localQueryCount ${_colour(query)}, '
-        'values:[${_expandValues(values)}]\n'
-        'Error ${e.errorNumber}: ${e.message}',
-        e,
-        userStack,
-      );
-      Error.throwWithStackTrace(e, userStack);
     } finally {
       if (stmt != null) {
         try {
@@ -182,12 +197,88 @@ class Db implements Transactionable {
     try {
       return await query.timeout(settings.queryTimeout);
     } on TimeoutException {
-      try {
-        await close().timeout(settings.connectionTimeout);
-      } catch (_) {
-        _connection = null;
+      final timedOut = _connection;
+      final connectionId = _serverConnectionId;
+      _poisoned = true;
+      var terminationConfirmed = true;
+      if (timedOut != null) {
+        terminationConfirmed =
+            await _terminateTimedOutConnection(timedOut, connectionId);
+        if (!terminationConfirmed) {
+          // Retain a reference and close the socket when the outstanding
+          // command eventually settles, even if server-side KILL failed.
+          unawaited(query.then<void>(
+            (_) => _closeStalledConnection(timedOut),
+            onError: (Object _, StackTrace __) =>
+                _closeStalledConnection(timedOut),
+          ));
+          logger.severe('Timed-out MySQL session termination is unconfirmed; '
+              'the connection will never be reused.');
+        }
+      }
+      _connection = null;
+      _serverConnectionId = null;
+      if (!terminationConfirmed) {
+        throw MySqlORMException('A MySQL command timed out and session '
+            'termination could not be confirmed. '
+            'The connection was discarded.');
       }
       rethrow;
+    }
+  }
+
+  Future<void> _closeStalledConnection(MySQLConnection connection) async {
+    try {
+      if (connection.connected) {
+        await connection.close().timeout(settings.connectionTimeout);
+      }
+    } catch (_) {
+      logger.warning('A timed-out MySQL connection could not be closed.');
+    }
+  }
+
+  Future<bool> _terminateTimedOutConnection(
+      MySQLConnection timedOut, int? connectionId) async {
+    if (!timedOut.connected) {
+      return true;
+    }
+    try {
+      await timedOut.close().timeout(settings.connectionTimeout);
+      return true;
+    } catch (_) {
+      // mysql_client rejects graceful close while awaiting a command reply.
+    }
+    if (connectionId == null) {
+      return false;
+    }
+    final closed = Completer<void>();
+    timedOut.onClose(() {
+      if (!closed.isCompleted) {
+        closed.complete();
+      }
+    });
+    MySQLConnection? rescuer;
+    try {
+      rescuer = await settings.createConnection();
+      await rescuer
+          .execute('KILL CONNECTION $connectionId')
+          .timeout(settings.connectionTimeout);
+      if (timedOut.connected) {
+        await closed.future.timeout(settings.connectionTimeout);
+      }
+      return true;
+    } catch (error, stackTrace) {
+      logger.warning('Could not confirm termination of a timed-out session',
+          error, stackTrace);
+      return false;
+    } finally {
+      if (rescuer != null) {
+        try {
+          await rescuer.close().timeout(settings.connectionTimeout);
+        } catch (_) {
+          logger.warning('Could not close the MySQL rescue connection.');
+        }
+      }
     }
   }
 
@@ -200,73 +291,85 @@ class Db implements Transactionable {
   }
 
   Future<R> transaction<R>(Future<R> Function() action) async {
+    if (inTransaction) {
+      throw InvalidTransactionStateException('A transaction is already active');
+    }
     inTransaction = true;
+    _rollbackRequested = false;
+    var started = false;
     try {
-      late final R result;
-      await _runQuery(
-        _connection!.transactional((dynamic _) async {
-          result = await action();
-        }),
-      );
+      await withResults('START TRANSACTION', action: (_) {});
+      started = true;
+      final result = await action();
+      if (_rollbackRequested) {
+        throw TransactionRolledBackException();
+      }
+      await withResults('COMMIT', action: (_) {});
       return result;
+    } catch (error, stackTrace) {
+      if (started && _connection != null) {
+        try {
+          await withResults('ROLLBACK', action: (_) {});
+        } catch (rollbackError, rollbackStackTrace) {
+          logger.severe('Failed to roll back transaction', rollbackError,
+              rollbackStackTrace);
+          try {
+            await close();
+          } catch (_) {
+            _connection = null;
+          }
+        }
+      }
+      Error.throwWithStackTrace(error, stackTrace);
     } finally {
       inTransaction = false;
+      _rollbackRequested = false;
     }
   }
 
-  Future<void> rollback() async {
-    await withResults('ROLLBACK', action: (rs) => {});
+  void requestRollback() {
+    if (!inTransaction) {
+      throw InvalidTransactionStateException(
+          'No active transaction to roll back');
+    }
+    _rollbackRequested = true;
   }
 
-  String _expandValues(ValueList? values) {
-    final sb = StringBuffer();
-    if (values == null) {
-      return '';
-    }
-    for (final value in values) {
-      if (sb.isNotEmpty) {
-        sb.write(', ');
-      }
-      final s = value.toString();
-      final len = s.length;
-      sb.write(s.substring(0, min(len, 20)));
-      if (len > 20) {
-        sb.write('[..$len]');
-      }
-    }
-    return sb.toString();
-  }
+  /// Requests rollback of the active transaction when its callback exits.
+  /// The transaction then completes with [TransactionRolledBackException].
+  Future<void> rollback() async => requestRollback();
 
   @override
-  Future<bool> test() => withResults('select 1 as testprob', action: (rs) {
-        if (rs.rows.length != 1) {
-          return false;
-        }
-        final row = rs.rows.first;
-        if (row.numOfColumns != 1) {
-          return false;
-        }
-        final values = row.colAt(0);
-        if (values == null || values.length != 1) {
-          return false;
-        }
-        return values[0] == '1';
-      });
+  Future<bool> test() => _poisoned
+      ? Future.value(false)
+      : withResults('select 1 as testprob', action: (rs) {
+          if (rs.rows.length != 1) {
+            return false;
+          }
+          final row = rs.rows.first;
+          if (row.numOfColumns != 1) {
+            return false;
+          }
+          final values = row.colAt(0);
+          if (values == null || values.length != 1) {
+            return false;
+          }
+          return values[0] == '1';
+        });
 
-  String _colour(String query) {
-    final first =
-        query.trimLeft().split(RegExp(r'\s+')).firstOrNull?.toLowerCase();
+  String _queryOperation(String query) {
+    final first = query.trimLeft().split(RegExp(r'\s+')).first.toLowerCase();
     switch (first) {
       case 'select':
-        return green(query);
       case 'insert':
-        return magenta(query);
       case 'update':
-        return orange(query);
       case 'delete':
-        return red(query);
+      case 'alter':
+      case 'create':
+      case 'drop':
+        return first.toUpperCase();
       default:
-        return query;
+        return 'OTHER';
     }
   }
 }

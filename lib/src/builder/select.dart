@@ -11,29 +11,18 @@ class Select<E> {
 
   Select(this._builder);
 
-  Where<E> where() => _builder._where = Where<E>(_builder);
+  Where<E> where() => Where<E>(_builder);
+
+  Future<List<E>> run() => _query();
 
   Future<List<E>> _query() {
     final dao = _builder.dao;
-    final table = dao.getTablename();
+    final table = sqlIdentifier(dao.getTablename(), qualified: true);
 
     final values = <Object>[];
     final sql = StringBuffer()..write('select * from $table ');
 
-    if (_builder._where != null) {
-      sql.write('where ');
-
-      for (final exp in _builder._whereExpressions) {
-        values.addAll(exp._values);
-        sql.write('$exp ');
-      }
-
-      if (dao is DaoTenant && !Tenant.inTenantBypassScope) {
-        sql.write('and `${dao.getTablename()}`. '
-            '`${(dao as DaoTenant).tenantFieldName}` = ? ');
-        values.add(Tenant.tenantId);
-      }
-    }
+    _builder.writeWhere(sql, values);
 
     if (_builder._orderBy != null) {
       final orderBy = _builder._orderBy!;
@@ -42,7 +31,7 @@ class Select<E> {
       if (!orderBy._asc) {
         asc = 'desc';
       }
-      sql.write('order by $field $asc ');
+      sql.write('order by ${sqlOrderBy(field)} $asc ');
     }
     // print('sql $sql');
     // print('values: $values');

@@ -7,6 +7,7 @@
 import 'package:dcli/dcli.dart';
 
 import '../../simple_mysql_orm.dart';
+import '../util/sql_identifier.dart';
 
 /// Drops an index from [databaseName].
 Future<void> dropIndex({
@@ -16,8 +17,8 @@ Future<void> dropIndex({
 }) async {
   await Transaction.current.db.withResults(
     '''
-ALTER TABLE `$databaseName`.`$table` 
-DROP INDEX `$indexName` ;
+ALTER TABLE ${sqlIdentifier(databaseName)}.${sqlIdentifier(table)}
+DROP INDEX ${sqlIdentifier(indexName)} ;
 ''',
     action: (_) {},
   );
@@ -31,8 +32,8 @@ Future<void> dropForeignKey({
 }) async {
   await Transaction.current.db.withResults(
     '''
-ALTER TABLE `$databaseName`.`$table` 
-DROP FOREIGN KEY `$foreignKeyName` ;
+ALTER TABLE ${sqlIdentifier(databaseName)}.${sqlIdentifier(table)}
+DROP FOREIGN KEY ${sqlIdentifier(foreignKeyName)} ;
 ''',
     action: (_) {},
   );
@@ -49,10 +50,10 @@ Future<void> addForeignKey({
 }) async {
   await Transaction.current.db.withResults(
     '''
-ALTER TABLE `$databaseName`.`$table` 
-ADD CONSTRAINT `$foreignKeyName`
-  FOREIGN KEY (`$column`)
-  REFERENCES `$databaseName`.`$foreignTable` (`$foreignColumn`)
+ALTER TABLE ${sqlIdentifier(databaseName)}.${sqlIdentifier(table)}
+ADD CONSTRAINT ${sqlIdentifier(foreignKeyName)}
+  FOREIGN KEY (${sqlIdentifier(column)})
+  REFERENCES ${sqlIdentifier(databaseName)}.${sqlIdentifier(foreignTable)} (${sqlIdentifier(foreignColumn)})
   ON DELETE NO ACTION
   ON UPDATE NO ACTION;
 ''',
@@ -61,28 +62,33 @@ ADD CONSTRAINT `$foreignKeyName`
 }
 
 /// check if a database has a foreign key.
-Future<bool> hasForeignKey(String foreignKeyName) {
-  final sql = '''
+Future<bool> hasForeignKey(String foreignKeyName, {String? databaseName}) {
+  final schema = databaseName ?? Transaction.current.db.settings.db;
+  if (schema == null || schema.isEmpty) {
+    throw ArgumentError('A database name is required to check a foreign key.');
+  }
+  const sql = '''
   SELECT CONSTRAINT_NAME
   FROM INFORMATION_SCHEMA.TABLE_CONSTRAINTS
   WHERE CONSTRAINT_TYPE = 'FOREIGN KEY'
-    AND CONSTRAINT_NAME = '$foreignKeyName'
+    AND CONSTRAINT_SCHEMA = ?
+    AND CONSTRAINT_NAME = ?
 ''';
 
-  return Transaction.current.db
-      .withResults(sql, action: (rs) => rs.rows.isNotEmpty);
+  return Transaction.current.db.withResults(sql,
+      values: [schema, foreignKeyName], action: (rs) => rs.rows.isNotEmpty);
 }
 
 Future<void> dropDatabase(String databaseName) async {
   await Transaction.current.db.withResults(
-    'DROP DATABASE IF EXISTS `$databaseName`',
+    'DROP DATABASE IF EXISTS ${sqlIdentifier(databaseName)}',
     action: (_) {},
   );
 }
 
 Future<void> createDatabase(String databaseName) async {
   await Transaction.current.db.withResults(
-    'CREATE DATABASE IF NOT EXISTS `$databaseName`',
+    'CREATE DATABASE IF NOT EXISTS ${sqlIdentifier(databaseName)}',
     action: (_) {},
   );
 }
@@ -100,13 +106,17 @@ Future<void> restoreDatabase({
         'You must call this function with thisWillDestroyMyDb = true');
   }
 
-  await dropDatabase(databaseName);
-
   final schemaScript = (read(pathToBackup).toList()
         ..removeWhere((line) => line.startsWith('--'))
         ..removeWhere((line) => line.startsWith('/*'))
         ..removeWhere((line) => line.isEmpty))
       .join('\n');
+
+  // Validate the backup is readable before destroying an existing database.
+  if (schemaScript.trim().isEmpty) {
+    throw ArgumentError.value(pathToBackup, 'pathToBackup', 'Empty backup');
+  }
+  await dropDatabase(databaseName);
 
   final statements = schemaScript.split(';');
 
@@ -122,14 +132,14 @@ Future<void> restoreDatabase({
 
 /// Returns true if the schema [databaseName] exists.
 Future<bool> existsDatabase(String databaseName) {
-  final sql = '''
+  const sql = '''
 SELECT SCHEMA_NAME
 FROM INFORMATION_SCHEMA.SCHEMATA
-WHERE SCHEMA_NAME = '$databaseName'
+  WHERE SCHEMA_NAME = ?
 ''';
 
-  return Transaction.current.db
-      .withResults(sql, action: (rs) => rs.rows.isNotEmpty);
+  return Transaction.current.db.withResults(sql,
+      values: [databaseName], action: (rs) => rs.rows.isNotEmpty);
 }
 
 /// Allows you to update the database with foreign key constraints disabled.

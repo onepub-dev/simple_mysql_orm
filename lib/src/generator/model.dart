@@ -9,9 +9,11 @@ import 'package:recase/recase.dart';
 
 import '../exceptions.dart';
 import '../schema/column.dart';
+import 'validate_names.dart';
 
 /// throws [ModelFileExistsException] if the output file already exists.
 void generateModel(String tablename, List<Column> columns, {String? filename}) {
+  validateGeneratedNames(tablename, columns);
   final filename0 = filename ??= '${ReCase(tablename).snakeCase}.dart';
 
   if (exists(filename0)) {
@@ -217,10 +219,10 @@ String _ctorArgs(List<Column> columns, int indent) {
     }
     if (!column.allowNull) {
       result.writeln(
-          '''${' ' * indent} required ${column.dartType()} ${ReCase(column.name).camelCase},''');
+          '''${' ' * indent} required ${column.dartType()} ${column.name},''');
     } else {
-      result.writeln(
-          '''${' ' * indent} ${column.dartType()}? ${ReCase(column.name).camelCase},''');
+      result
+          .writeln('''${' ' * indent} ${column.dartType()}? ${column.name},''');
     }
   }
   return result.toString();

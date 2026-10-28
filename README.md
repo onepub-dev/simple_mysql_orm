@@ -137,7 +137,7 @@ import 'dao/package_dao.dart';
 import 'model/package.dart';
 
 Future<void> main() async {
-  /// Configure the logger to output each sql command.
+  /// Configure the logger to output query types and parameter counts.
   Logger.root.level = Level.FINE;
   Logger.root.onRecord.listen((record) {
     print('${record.level.name}: ${record.time}: ${record.message}');
@@ -153,37 +153,41 @@ Future<void> main() async {
 
   /// create a transaction and run a set of queries
   /// within the transaction.
-  await withTransaction<void>(action: () async {
-    final dao = PackageDao();
+  try {
+    await withTransaction<void>(action: () async {
+      final dao = PackageDao();
 
-    /// create a package and save it.
-    final package = Package(name: 'dcli', private: false);
-    await dao.persist(package);
+      /// create a package and save it.
+      final package = Package(name: 'dcli', private: false);
+      await dao.persist(package);
 
-    /// update the package to public
-    package.private = false;
-    await dao.update(package);
+      /// update the package to public
+      package.private = false;
+      await dao.update(package);
 
-    /// query the package using VERY basic and incomplete builder
-    var rows = await dao.select().where().eq('name', 'dcli').run();
-    for (final row in rows) {
-      print('name: ${row.name} private: ${row.private}');
-    }
+      /// query the package using VERY basic and incomplete builder
+      var rows = await dao.select().where().eq('name', 'dcli').run();
+      for (final row in rows) {
+        print('name: ${row.name} private: ${row.private}');
+      }
 
-    /// Run a custom query
-    rows = await dao.query('select * from package where id = ?', [package.id]);
-    for (final row in rows) {
-      print('name: ${row.name} private: ${row.private}');
-    }
+      /// Run a custom query
+      rows = await dao.query('select * from package where id = ?', [package.id]);
+      for (final row in rows) {
+        print('name: ${row.name} private: ${row.private}');
+      }
 
-    // delete the package
-    await dao.remove(package);
+      // delete the package
+      await dao.remove(package);
 
-    /// changed my mind
-    Transaction.current.rollback();
-  });
-  // close the pool to ensure a clean shutdown
-  await pool.close();
+      /// changed my mind
+      await Transaction.current.rollback();
+    });
+  } on TransactionRolledBackException {
+    // The requested rollback completed.
+  } finally {
+    await pool.close();
+  }
 }
 
 const settingsYaml = '''
@@ -191,7 +195,7 @@ mysql_user: root
 mysql_password: my root password
 mysql_host: localhost
 mysql_port: 3306
-mysql_db: some_db_name
+mysql_database: some_db_name
 ''';
 
 ```
@@ -400,6 +404,8 @@ However in normal operation the User table should always be access as a tenant t
 For these scenarios you use `withTenantBypass`.
 
 When using `withTenantBypass` DaoTenant will not inject the tenant id into your queries.
+Outside `withTenant` and `withTenantByPass`, tenant DAO operations now throw
+`MissingTenantException`, including update and delete methods.
 
 
 ```dart
@@ -425,6 +431,18 @@ to ensure that you follow the tenant rules.
 
 SMO attempts to validate that all queries contain the tenant field but this is a fairly crude
 check (we just look for the presense of the column name). 
+
+For custom SELECTs, `queryTenant` accepts `SELECT * FROM <DAO table> WHERE
+<predicate>`. The predicate cannot contain parentheses or comments. It groups
+the predicate, including `OR` conditions, before adding the tenant condition.
+It rejects joins, subqueries, window functions, and trailing clauses. Use a
+manually scoped query for more complex SQL.
+Custom `query`/`execute` SQL remains the caller's responsibility; a column-name
+check is not an authorization boundary.
+
+Field and sort arguments in generated queries are quoted as identifiers. Pass
+column names or comma-separated sort columns, not SQL expressions. Use the
+custom SQL API for developer-authored expressions and bind all data values.
 
 ## writing custom queries
 
@@ -452,8 +470,10 @@ For those types when you that might not be the case you can use the following:
 ```    
 
 # logging
-To output each query sent to the db set logging to FINE.
-To get all db interactions so logging to FINER.
+Set logging to FINE for query types and bound-parameter counts. Query text and
+bound values are omitted because they may contain secrets. Driver exceptions
+are still returned to callers and should be handled according to your logging
+policy.
 
 
 # Testing

@@ -62,7 +62,11 @@ class SharedPool<T extends Transactionable> implements Pool<T> {
   /// they are in use.
   final _pool = <ConnectionWrapper<T>, bool>{};
 
-  var available = Completer<bool>();
+  Completer<void>? _available;
+
+  var _pendingOpens = 0;
+
+  var _closed = false;
 
   /// The [excessDuration] sets the duration after which we check
   /// for any excess connections and disconnect from them.
@@ -84,13 +88,13 @@ class SharedPool<T extends Transactionable> implements Pool<T> {
       throw ConfigurationException('The DBPool maxSize must be >= minSize. '
           'Found minSize: $minSize maxSize: $maxSize');
     }
+    if (maxSize < 1) {
+      throw ConfigurationException('The DBPool maxSize must be at least 1.');
+    }
     if (maxConnectionAttempts < 1) {
       throw ConfigurationException(
           'The DBPool must make at least one connection attempt');
     }
-
-    // we start in a state where we have connections available.
-    available.complete(true);
 
     // start timer future to release excess connections.
     _releaseTimer = Timer(excessDuration, _releaseExcess);
@@ -110,7 +114,8 @@ class SharedPool<T extends Transactionable> implements Pool<T> {
       rethrow;
     }
     final conn = ConnectionWrapper._(this, n);
-    _pool[conn] = false;
+    // The opener owns the new connection until obtain() finishes validation.
+    _pool[conn] = true;
     logger.finer(() => 'Created new connection: ${conn.wrapped.id}');
 
     return conn;
@@ -131,23 +136,49 @@ class SharedPool<T extends Transactionable> implements Pool<T> {
   /// Returns a connection
   @override
   Future<ConnectionWrapper<T>> obtain() async {
-    final conn = _findUnusedConnection();
+    final deadline = DateTime.now().add(acquireTimeout);
+    while (true) {
+      if (_closed) {
+        throw StateError('The connection pool is closed.');
+      }
+      final conn = _findUnusedConnection();
+      if (conn != null) {
+        return _allocate(conn);
+      }
+      if (_pool.length + _pendingOpens < maxSize) {
+        _pendingOpens++;
+        var reserved = true;
+        try {
+          final created = await _validConnection(null);
+          _pendingOpens--;
+          reserved = false;
+          _signalAvailable();
+          return await _allocate(created);
+        } finally {
+          if (reserved) {
+            _pendingOpens--;
+            _signalAvailable();
+          }
+        }
+      }
 
-    if (conn != null) {
-      return _allocate(conn);
-    }
-
-    /// we have no unused connections.
-    if (_pool.length >= maxSize) {
-      /// we need to wait for a connection to become available
-      available = Completer<bool>();
-      // wait for a connection to become available
+      final remaining = deadline.difference(DateTime.now());
+      if (remaining <= Duration.zero) {
+        throw TimeoutException(
+            'Timed out waiting for a connection', acquireTimeout);
+      }
       logger.finer(() => 'awaiting connection');
-      await available.future.timeout(acquireTimeout);
-      return _allocate(_findUnusedConnection()!);
+      final signal = _available ??= Completer<void>();
+      await signal.future.timeout(remaining);
     }
+  }
 
-    return _allocate(await _validConnection(null));
+  void _signalAvailable() {
+    final signal = _available;
+    _available = null;
+    if (signal != null && !signal.isCompleted) {
+      signal.complete();
+    }
   }
 
   ConnectionWrapper<T>? _findUnusedConnection() {
@@ -164,6 +195,9 @@ class SharedPool<T extends Transactionable> implements Pool<T> {
   /// We release one connection every minute provided
   /// it hasn't been used for at least a minute;
   Future<void> _releaseExcess() async {
+    if (_closed) {
+      return;
+    }
     logger.finer(() => 'releaseExcess called');
     if (_pool.length > minSize) {
       logger.finer(() => 'Found potentional connections to release');
@@ -193,20 +227,20 @@ class SharedPool<T extends Transactionable> implements Pool<T> {
     }
 
     // restart the timer.
-    _releaseTimer = Timer(excessDuration, _releaseExcess);
+    if (!_closed) {
+      _releaseTimer = Timer(excessDuration, _releaseExcess);
+    }
   }
 
   /// Releases [connection] back to the pool
   @override
   Future<void> release(ConnectionWrapper<T> connection) async {
-    _deallocate(connection);
-
-    /// tell anyone trying to obtain a connection
-    /// that we now have some available.
-    if (!available.isCompleted) {
-      logger.finer(() => 'flagged connections available');
-      available.complete(true);
+    if (_pool[connection] != true) {
+      throw StateError('Connection is not checked out from this pool.');
     }
+    _deallocate(connection);
+    connection.lastUsed = DateTime.now();
+    _signalAvailable();
   }
 
   Future<ConnectionWrapper<T>> _allocate(ConnectionWrapper<T> conn) async {
@@ -215,13 +249,8 @@ class SharedPool<T extends Transactionable> implements Pool<T> {
     /// mark conn as in use before we call await so
     /// that another async method can't obtain it.
     _pool[conn] = true;
-
-    final conn0 = await _validConnection(conn);
-
-    // Mark the returned connection as in use as it
-    // may be different from the one we passed in.
+    final conn0 = await _validConnection(conn, reserveReplacement: true);
     _pool[conn0] = true;
-
     return conn0;
   }
 
@@ -239,51 +268,68 @@ class SharedPool<T extends Transactionable> implements Pool<T> {
   /// and if not replaces it with a valid connection.
   /// If a replacement connection can't be obtained
   /// then an exception will be thrown.
-  Future<ConnectionWrapper<T>> _validConnection(
-      ConnectionWrapper<T>? conn) async {
+  Future<ConnectionWrapper<T>> _validConnection(ConnectionWrapper<T>? conn,
+      {bool reserveReplacement = false}) async {
     String? lastError;
 
-    if (conn != null) {
-      try {
-        if (await conn.wrapped.test().timeout(connectionAttemptTimeout)) {
-          return conn;
-        }
-      } catch (e) {
-        lastError = e.toString();
-        await _removeBadConnection(conn);
-        if (!_isRetryable(e)) {
-          rethrow;
-        }
-        conn = null;
+    var reserved = false;
+    void reserve() {
+      if (reserveReplacement && !reserved) {
+        _pendingOpens++;
+        reserved = true;
       }
+    }
+
+    try {
       if (conn != null) {
-        await _removeBadConnection(conn);
-      }
-    }
-
-    for (var attempt = 1; attempt <= maxConnectionAttempts; attempt++) {
-      try {
-        final replacement = await _createNew();
-        if (lastError != null) {
-          logger.warning('Connection to MySQL succeeded.');
+        try {
+          if (await conn.wrapped.test().timeout(connectionAttemptTimeout)) {
+            return conn;
+          }
+        } catch (e) {
+          lastError = e.toString();
+          reserve();
+          await _removeBadConnection(conn);
+          if (!_isRetryable(e)) {
+            rethrow;
+          }
+          conn = null;
         }
-        return replacement;
-      } catch (e) {
-        lastError = e.toString();
-        if (_isAccessDenied(e)) {
-          break;
-        }
-        if (!_isRetryable(e)) {
-          rethrow;
-        }
-        if (attempt < maxConnectionAttempts) {
-          await _logAndWait(lastError);
+        if (conn != null) {
+          reserve();
+          await _removeBadConnection(conn);
         }
       }
-    }
 
-    logger.severe('Unable to connect to db. $lastError');
-    throw MySqlORMException('Unable to connect to db. $lastError');
+      for (var attempt = 1; attempt <= maxConnectionAttempts; attempt++) {
+        try {
+          final replacement = await _createNew();
+          if (lastError != null) {
+            logger.warning('Connection to MySQL succeeded.');
+          }
+          return replacement;
+        } catch (e) {
+          lastError = e.toString();
+          if (_isAccessDenied(e)) {
+            break;
+          }
+          if (!_isRetryable(e)) {
+            rethrow;
+          }
+          if (attempt < maxConnectionAttempts) {
+            await _logAndWait(lastError);
+          }
+        }
+      }
+
+      logger.severe('Unable to connect to db. $lastError');
+      throw MySqlORMException('Unable to connect to db. $lastError');
+    } finally {
+      if (reserved) {
+        _pendingOpens--;
+        _signalAvailable();
+      }
+    }
   }
 
   bool _isAccessDenied(Object error) =>
@@ -308,8 +354,6 @@ class SharedPool<T extends Transactionable> implements Pool<T> {
         notReleased.add(conn.id);
       } else if (conn.inTransaction) {
         inTransaction.add(conn.id);
-      } else {
-        await conn.close();
       }
     }
     var error = '';
@@ -327,7 +371,17 @@ class SharedPool<T extends Transactionable> implements Pool<T> {
       throw MySQLException(error);
     }
 
+    if (_pendingOpens != 0) {
+      throw MySQLException('Connection opens are still pending.');
+    }
+
+    _closed = true;
+    _signalAvailable();
     _releaseTimer.cancel();
+    for (final conn in _pool.keys) {
+      await conn.close();
+    }
+    _pool.clear();
   }
 
   Future<void> _logAndWait(String message) async {

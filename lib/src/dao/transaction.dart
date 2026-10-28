@@ -40,6 +40,7 @@ Future<R> withTransaction<R>({
         useTransaction: useTransaction,
         shareDb: false,
         debugName: debugName,
+        dbPool: dbPool,
       );
 
     case TransactionNesting.detached:
@@ -48,6 +49,7 @@ Future<R> withTransaction<R>({
         useTransaction: useTransaction,
         shareDb: false,
         debugName: debugName,
+        dbPool: dbPool,
       );
 
     case TransactionNesting.nested:
@@ -56,6 +58,7 @@ Future<R> withTransaction<R>({
         useTransaction: useTransaction && !nestedTransaction,
         shareDb: nestedTransaction,
         debugName: debugName,
+        dbPool: dbPool,
       );
   }
 }
@@ -68,26 +71,38 @@ Future<R> _runTransaction<R>(
   DbPool? dbPool,
 }) async {
   ConnectionWrapper<Db>? wrapper;
-
-  dbPool ??= DbPool();
+  final parent = Scope.hasScopeKey(Transaction.transactionKey)
+      ? Transaction.current
+      : null;
+  if (shareDb &&
+      parent != null &&
+      dbPool != null &&
+      !identical(dbPool, parent.sourcePool)) {
+    throw StateError('Nested transaction cannot switch database pools. '
+        'Use TransactionNesting.detached for a different pool.');
+  }
+  final selectedPool =
+      shareDb ? null : (dbPool ?? parent?.sourcePool ?? DbPool());
 
   try {
     Db db;
     if (shareDb) {
       db = Transaction.current.db;
     } else {
-      wrapper = await dbPool.obtain();
+      wrapper = await selectedPool!.obtain();
       db = wrapper.wrapped;
     }
 
-    final transaction = Transaction<R>(db, useTransaction: useTransaction);
+    final transaction = Transaction<R>(db,
+        useTransaction: useTransaction,
+        sourcePool: selectedPool ?? parent?.sourcePool);
 
     return await (Scope('runTransaction')
           ..value(Transaction.transactionKey, transaction))
         .run(() => transaction.run(action, debugName: debugName));
   } finally {
     if (wrapper != null) {
-      await dbPool.release(wrapper);
+      await selectedPool!.release(wrapper);
     }
   }
 }
@@ -123,6 +138,9 @@ class Transaction<R> {
 
   final Db db;
 
+  /// Pool that owns [db], if this transaction was opened through a pool.
+  final DbPool? sourcePool;
+
   /// For debugging purposes the user can suppress
   /// the use of a transaction so that they can see db
   /// updates as they happen.
@@ -140,7 +158,8 @@ class Transaction<R> {
   ///
   /// If [useTransaction] is false the transaction
   /// isn't created. This should only be used for debugging.
-  Transaction(this.db, {required this.useTransaction}) : id = _nextId;
+  Transaction(this.db, {required this.useTransaction, this.sourcePool})
+      : id = _nextId;
 
   static int get _nextId => use(TransactionTestScope.transactionTestIdKey,
       withDefault: () => __nextId++);
@@ -169,7 +188,7 @@ class Transaction<R> {
         'useTransaction: $useTransaction '
         'debugName: ${debugName ?? 'none'}');
     if (useTransaction) {
-      final result = await db.transaction(()  => action());
+      final result = await db.transaction(() => action());
       _commited = true;
       logger.finer(() =>
           'End transaction($id db: ${db.id}): useTransaction: $useTransaction '
@@ -186,15 +205,16 @@ class Transaction<R> {
   }
 
   Future<void> rollback() async {
-    if (!useTransaction) {
-      return;
-    }
     if (_commited) {
       throw InvalidTransactionStateException('commit has already been called');
     }
-    // Use withResults to ensure any PS are properly freed.
-    await db.withResults('ROLLBACK', action: (_) {});
+    db.requestRollback();
   }
+}
+
+class TransactionRolledBackException implements Exception {
+  @override
+  String toString() => 'The transaction was rolled back by request.';
 }
 
 /// Lets you run a query outside the scope of a Dao.
