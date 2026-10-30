@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:mysql_client/exception.dart';
 import 'package:path/path.dart' as p;
 import 'package:simple_mysql_orm/simple_mysql_orm.dart';
 import 'package:test/test.dart';
@@ -10,6 +11,35 @@ import '../../test_dao/model/publisher.dart';
 final String _settingsPath = p.join('test', 'settings.yaml');
 
 void main() {
+  test('raw driver transaction cannot commit an enclosing ORM transaction',
+      () async {
+    const name = 'security-driver-nesting-guard';
+    final pool = DbPool.fromSettings(
+        pathToSettings: _settingsPath, overrideMin: 0, overrideMax: 1);
+    try {
+      await expectLater(
+          withTransaction<void>(
+              dbPool: pool,
+              action: () async {
+                await PublisherDao().persist(Publisher(
+                    name: name, contactEmail: 'guard@example.invalid'));
+                await expectLater(
+                    Transaction.current.db.connection
+                        .transactional<void>((_) => Future<void>.value()),
+                    throwsA(isA<MySQLClientException>()));
+                throw StateError('force outer rollback');
+              }),
+          throwsStateError);
+      await withTransaction(
+          dbPool: pool,
+          action: () async {
+            expect(await PublisherDao().getByName(name), isNull);
+          });
+    } finally {
+      await pool.close();
+    }
+  });
+
   test('an explicit pool is used without a singleton', () async {
     final pool = DbPool.fromSettingsNoDatabase(
         pathToSettings: _settingsPath, overrideMin: 0, overrideMax: 2);

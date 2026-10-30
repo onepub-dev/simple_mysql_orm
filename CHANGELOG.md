@@ -8,7 +8,8 @@
 - Honor explicitly supplied transaction pools and reject conflicting nested
   pool selection.
 - Rollback requests now roll back the enclosing transaction and complete with
-  `TransactionRolledBackException`; transaction control commands retain timeouts.
+  `TransactionRolledBackException`. The driver retains its nested transaction
+  guard and the existing whole-transaction `queryTimeout` behavior.
 - Remove bound values and SQL text from library query logs and remove lookup
   values from library-generated errors.
 - Quote schema and CLI table identifiers, bind schema lookup values, and read

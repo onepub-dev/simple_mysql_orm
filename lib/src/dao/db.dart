@@ -194,31 +194,14 @@ class Db implements Transactionable {
     }
     inTransaction = true;
     _rollbackRequested = false;
-    var started = false;
     try {
-      await withResults('START TRANSACTION', action: (_) {});
-      started = true;
-      final result = await action();
-      if (_rollbackRequested) {
-        throw TransactionRolledBackException();
-      }
-      await withResults('COMMIT', action: (_) {});
-      return result;
-    } catch (error, stackTrace) {
-      if (started && _connection != null) {
-        try {
-          await withResults('ROLLBACK', action: (_) {});
-        } catch (rollbackError, rollbackStackTrace) {
-          logger.severe('Failed to roll back transaction', rollbackError,
-              rollbackStackTrace);
-          try {
-            await close();
-          } catch (_) {
-            _connection = null;
-          }
+      return await _runQuery(connection.transactional((_) async {
+        final result = await action();
+        if (_rollbackRequested) {
+          throw TransactionRolledBackException();
         }
-      }
-      Error.throwWithStackTrace(error, stackTrace);
+        return result;
+      }));
     } finally {
       inTransaction = false;
       _rollbackRequested = false;
