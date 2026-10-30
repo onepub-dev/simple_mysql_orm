@@ -38,10 +38,6 @@ class Db implements Transactionable {
 
   MySQLConnection? _connection;
 
-  int? _serverConnectionId;
-
-  var _poisoned = false;
-
   static var queryCount = 0;
 
   var _localQueryCount = 0;
@@ -118,9 +114,6 @@ class Db implements Transactionable {
       use(TransactionTestScope.dbTestIdKey, withDefault: () => __nextId++);
 
   MySQLConnection get connection {
-    if (_poisoned) {
-      throw StateError('This MySQL connection timed out and cannot be reused.');
-    }
     if (_connection == null) {
       throw StateError('You must call connect() first.');
     }
@@ -128,32 +121,13 @@ class Db implements Transactionable {
   }
 
   Future<void> connect() async {
-    final opened = await settings.createConnection();
-    try {
-      final result = await opened
-          .execute('SELECT CONNECTION_ID()')
-          .timeout(settings.connectionTimeout);
-      final value = result.rows.single.colAt(0);
-      _serverConnectionId = int.parse(value!);
-      _connection = opened;
-      _poisoned = false;
-    } catch (_) {
-      try {
-        await opened.close().timeout(settings.connectionTimeout);
-      } catch (_) {
-        logger.warning('Could not close a connection during setup failure.');
-      }
-      rethrow;
-    }
+    _connection = await settings.createConnection();
   }
 
   @override
   Future<void> close() async {
-    if (_connection?.connected ?? false) {
-      await _connection!.close();
-    }
+    await _connection?.close();
     _connection = null;
-    _serverConnectionId = null;
   }
 
   /// NEW: run a query, expose `IResultSet` to a callback, then free any PS.
@@ -197,88 +171,12 @@ class Db implements Transactionable {
     try {
       return await query.timeout(settings.queryTimeout);
     } on TimeoutException {
-      final timedOut = _connection;
-      final connectionId = _serverConnectionId;
-      _poisoned = true;
-      var terminationConfirmed = true;
-      if (timedOut != null) {
-        terminationConfirmed =
-            await _terminateTimedOutConnection(timedOut, connectionId);
-        if (!terminationConfirmed) {
-          // Retain a reference and close the socket when the outstanding
-          // command eventually settles, even if server-side KILL failed.
-          unawaited(query.then<void>(
-            (_) => _closeStalledConnection(timedOut),
-            onError: (Object _, StackTrace __) =>
-                _closeStalledConnection(timedOut),
-          ));
-          logger.severe('Timed-out MySQL session termination is unconfirmed; '
-              'the connection will never be reused.');
-        }
-      }
-      _connection = null;
-      _serverConnectionId = null;
-      if (!terminationConfirmed) {
-        throw MySqlORMException('A MySQL command timed out and session '
-            'termination could not be confirmed. '
-            'The connection was discarded.');
+      try {
+        await close().timeout(settings.connectionTimeout);
+      } catch (_) {
+        _connection = null;
       }
       rethrow;
-    }
-  }
-
-  Future<void> _closeStalledConnection(MySQLConnection connection) async {
-    try {
-      if (connection.connected) {
-        await connection.close().timeout(settings.connectionTimeout);
-      }
-    } catch (_) {
-      logger.warning('A timed-out MySQL connection could not be closed.');
-    }
-  }
-
-  Future<bool> _terminateTimedOutConnection(
-      MySQLConnection timedOut, int? connectionId) async {
-    if (!timedOut.connected) {
-      return true;
-    }
-    try {
-      await timedOut.close().timeout(settings.connectionTimeout);
-      return true;
-    } catch (_) {
-      // mysql_client rejects graceful close while awaiting a command reply.
-    }
-    if (connectionId == null) {
-      return false;
-    }
-    final closed = Completer<void>();
-    timedOut.onClose(() {
-      if (!closed.isCompleted) {
-        closed.complete();
-      }
-    });
-    MySQLConnection? rescuer;
-    try {
-      rescuer = await settings.createConnection();
-      await rescuer
-          .execute('KILL CONNECTION $connectionId')
-          .timeout(settings.connectionTimeout);
-      if (timedOut.connected) {
-        await closed.future.timeout(settings.connectionTimeout);
-      }
-      return true;
-    } catch (error, stackTrace) {
-      logger.warning('Could not confirm termination of a timed-out session',
-          error, stackTrace);
-      return false;
-    } finally {
-      if (rescuer != null) {
-        try {
-          await rescuer.close().timeout(settings.connectionTimeout);
-        } catch (_) {
-          logger.warning('Could not close the MySQL rescue connection.');
-        }
-      }
     }
   }
 
@@ -340,22 +238,20 @@ class Db implements Transactionable {
   Future<void> rollback() async => requestRollback();
 
   @override
-  Future<bool> test() => _poisoned
-      ? Future.value(false)
-      : withResults('select 1 as testprob', action: (rs) {
-          if (rs.rows.length != 1) {
-            return false;
-          }
-          final row = rs.rows.first;
-          if (row.numOfColumns != 1) {
-            return false;
-          }
-          final values = row.colAt(0);
-          if (values == null || values.length != 1) {
-            return false;
-          }
-          return values[0] == '1';
-        });
+  Future<bool> test() => withResults('select 1 as testprob', action: (rs) {
+        if (rs.rows.length != 1) {
+          return false;
+        }
+        final row = rs.rows.first;
+        if (row.numOfColumns != 1) {
+          return false;
+        }
+        final values = row.colAt(0);
+        if (values == null || values.length != 1) {
+          return false;
+        }
+        return values[0] == '1';
+      });
 
   String _queryOperation(String query) {
     final first = query.trimLeft().split(RegExp(r'\s+')).first.toLowerCase();

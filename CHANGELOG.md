@@ -15,8 +15,6 @@
   backups before dropping a database during restore.
 - Reject table or column names that cannot be safely embedded in generated
   Dart source.
-- Terminate timed-out MySQL sessions before returning their connections to a
-  pool; report when server-side termination cannot be confirmed.
 
 # 6.6.0
 - test mysql pool recovery failure paths

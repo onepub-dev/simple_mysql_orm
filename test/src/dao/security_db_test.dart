@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:path/path.dart' as p;
-import 'package:settings_yaml/settings_yaml.dart';
 import 'package:simple_mysql_orm/simple_mysql_orm.dart';
 import 'package:test/test.dart';
 
@@ -165,46 +164,6 @@ void main() {
       if (!gate.isCompleted) {
         gate.complete();
       }
-      await pool.close();
-    }
-  });
-
-  test('a timed-out command terminates its server session', () async {
-    final settings = SettingsYaml.load(pathToSettings: _settingsPath);
-    final pool = DbPool.fromArgs(
-      host: settings.asString('mysql_host'),
-      port: settings.asInt('mysql_port'),
-      database: settings.asString('mysql_database'),
-      user: settings.asString('mysql_user'),
-      password: settings.asString('mysql_password'),
-      useSSL: false,
-      minSize: 0,
-      maxSize: 1,
-      queryTimeout: const Duration(milliseconds: 300),
-      connectionAttemptTimeout: const Duration(seconds: 3),
-    );
-    int? serverId;
-    try {
-      await expectLater(
-          withTransaction(
-              dbPool: pool,
-              action: () async {
-                serverId = (await tquery('SELECT CONNECTION_ID() AS id'))
-                    .single
-                    .asInt('id');
-                await tquery('SELECT SLEEP(2)');
-              }),
-          throwsA(isA<TimeoutException>()));
-
-      final active = await pool.withDb(
-          action: (db) => db.withResults(
-                'SELECT COUNT(*) FROM INFORMATION_SCHEMA.PROCESSLIST '
-                'WHERE ID = ?',
-                values: [serverId],
-                action: (rs) => int.parse(rs.rows.single.colAt(0)!),
-              ));
-      expect(active, 0);
-    } finally {
       await pool.close();
     }
   });

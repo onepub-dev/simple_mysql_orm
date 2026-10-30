@@ -27,39 +27,46 @@ Future<void> main() async {
       .save();
 
   /// Initialise the db pool
-  DbPool.fromSettings(pathToSettings: 'settings.yaml');
+  final pool = DbPool.fromSettings(pathToSettings: 'settings.yaml');
 
   /// create a transaction and run a set of queries
   /// within the transaction.
-  await withTransaction<void>(action: () async {
-    final dao = PackageDao();
+  try {
+    await withTransaction<void>(action: () async {
+      final dao = PackageDao();
 
-    /// create a package and save it.
-    final package = Package(name: 'dcli', private: false);
-    await dao.persist(package);
+      /// create a package and save it.
+      final package = Package(name: 'dcli', private: false);
+      await dao.persist(package);
 
-    /// update the package to public
-    package.private = false;
-    await dao.update(package);
+      /// update the package to public
+      package.private = false;
+      await dao.update(package);
 
-    /// query the package using VERY basic and incomplete builder
-    var rows = await dao.select().where().eq('name', 'dcli').run();
-    for (final row in rows) {
-      print('name: ${row.name} private: ${row.private}');
-    }
+      /// query the package using VERY basic and incomplete builder
+      var rows = await dao.select().where().eq('name', 'dcli').run();
+      for (final row in rows) {
+        print('name: ${row.name} private: ${row.private}');
+      }
 
-    /// Run a custom query
-    rows = await dao.query('select * from package where id = ?', [package.id]);
-    for (final row in rows) {
-      print('name: ${row.name} private: ${row.private}');
-    }
+      /// Run a custom query
+      rows =
+          await dao.query('select * from package where id = ?', [package.id]);
+      for (final row in rows) {
+        print('name: ${row.name} private: ${row.private}');
+      }
 
-    // delete the package
-    await dao.remove(package);
+      // delete the package
+      await dao.remove(package);
 
-    /// changed my mind
-    await Transaction.current.rollback();
-  });
+      /// changed my mind
+      await Transaction.current.rollback();
+    });
+  } on TransactionRolledBackException {
+    print('The example transaction was rolled back.');
+  } finally {
+    await pool.close();
+  }
 }
 
 const settingsYaml = '''
